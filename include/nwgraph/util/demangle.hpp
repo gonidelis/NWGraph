@@ -13,8 +13,13 @@
 
 #ifndef NW_GRAPH_DEMANGLE_HPP
 #define NW_GRAPH_DEMANGLE_HPP
-
+#ifdef _MSC_VER
+#include <Windows.h>
+#elif defined(__GNUC__)
 #include <cxxabi.h>
+#else
+
+#endif
 #include <string>
 
 namespace nw {

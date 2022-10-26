@@ -26,7 +26,11 @@
 #include <dpstd/numeric>
 #else
 #include <execution>
+#if(NWGRAPH_USE_TBB)
 #include <tbb/parallel_sort.h>
+//#elif(NWGRAPH_USE_HPX)
+//#include <hpx/hpx.h>
+#endif
 #endif
 
 #include "nwgraph/util/defaults.hpp"

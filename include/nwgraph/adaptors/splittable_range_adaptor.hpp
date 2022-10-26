@@ -19,7 +19,9 @@
 #define NW_GRAPH_SPLITTABLE_RANGE_ADAPTOR_HPP
 
 #include <cstddef>
+#if(NWGRAPH_USE_TBB)
 #include <oneapi/tbb.h>
+#endif // 
 
 #include <ranges>
 
@@ -49,10 +51,10 @@ public:
   splittable_range_adaptor(Iterator begin, Iterator end) : begin_(begin > end ? end : begin), end_(end) {}
 
   splittable_range_adaptor(Iterator begin, Iterator end, std::size_t cutoff) : begin_(begin > end ? end : begin), end_(end), cutoff_(cutoff) {}
-
+#if(NWGRAPH_USE_TBB)
   splittable_range_adaptor(splittable_range_adaptor& rhs, tbb::split)
       : begin_(rhs.begin_), end_(rhs.begin_ += rhs.size() / 2), cutoff_(rhs.cutoff_) {}
-
+#endif
   // We need the weird ref version to disambiguate the explicit range
   // initializer, which would otherwise get called incorrectly during a tbb
   // split event.

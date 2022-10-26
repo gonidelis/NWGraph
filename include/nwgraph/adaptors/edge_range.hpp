@@ -50,12 +50,13 @@ public:
   edge_range(Graph& g, std::index_sequence<Is...> is = {}) : edge_range(g, 0, is) {}
 
   // Split a range.
+#if(NWGRAPH_USE_TBB)
   edge_range(edge_range& b, tbb::split) : edge_range(b) {
     auto i = (outer_end_ - outer_begin_) / 2;
     outer_begin_ += i;
     b.outer_end_ = b.outer_begin_ + i;
   }
-
+#endif
   // Copy constructors and assignment operators are fine.
   edge_range(const edge_range&) = default;
   edge_range& operator=(const edge_range&) = default;

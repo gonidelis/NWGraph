@@ -27,7 +27,12 @@
 
 #include <algorithm>
 #include <concepts>
+#ifdef __GNUC__
 #include <cxxabi.h>
+#elif defined(_MSC_VER)
+#include <Windows.h>
+#endif
+
 #include <iostream>
 #include <istream>
 #include <numeric>

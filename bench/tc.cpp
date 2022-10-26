@@ -37,6 +37,9 @@ static constexpr const char USAGE[] =
       -V, --verbose         run in verbose mode
 )";
 
+#if NWGRAPH_USE_HPX
+#include<hpx/hpx_main.hpp>
+#endif
 #include "nwgraph/adjacency.hpp"
 #include "nwgraph/edge_list.hpp"
 #include "nwgraph/volos.hpp"
@@ -81,7 +84,7 @@ auto compress(edge_list<directedness::undirected>& A) {
   return B;
 }
 
-// heuristic to see if sufficently dense power-law graph
+// heuristic to see if sufficiently dense power-law graph
 template <edge_list_graph EdgeList, class Vector>
 static bool worth_relabeling(const EdgeList& el, const Vector& degree) {
   using vertex_id_type = typename EdgeList::vertex_id_type;
@@ -136,7 +139,7 @@ auto config_log() {
 
   auto seed = std::random_device();
   auto gen  = std::mt19937(seed());
-  auto dis  = std::uniform_int_distribution<char>(97, 122);
+  auto dis  = std::uniform_int_distribution<short>(97, 122);
   uuid_.resize(uuid_size_);
   std::generate(uuid_.begin(), uuid_.end(), [&] { return dis(gen); });
 
@@ -194,7 +197,7 @@ void run_bench(int argc, char* argv[]) {
   bool verify  = args["--verify"].asBool();
   bool verbose = args["--verbose"].asBool();
   bool debug   = args["--debug"].asBool();
-  long trials  = args["-n"].asLong() ?: 1;
+  long trials  = args["-n"].asLong() ? args["-n"].asLong() : 1;
 
   // Read the more complex options
   std::string direction  = "ascending";
@@ -216,7 +219,7 @@ void run_bench(int argc, char* argv[]) {
     auto el_a   = load_graph<nw::graph::directedness::undirected>(file);
     auto degree = degrees(el_a);
 
-    // Run and time relabeling. This operates directly on the incoming edglist.
+    // Run and time relabeling. This operates directly on the incoming edge list.
     bool relabeled        = false;
     auto&& [relabel_time] = time_op([&] {
       if (args["--relabel"].asBool()) {
@@ -233,7 +236,7 @@ void run_bench(int argc, char* argv[]) {
       relabel_time = 0.0;
     }
 
-    // Clean up the edgelist to deal with the normal issues related to
+    // Clean up the edge list to deal with the normal issues related to
     // undirectedness.
     auto&& [clean_time] = time_op([&] { clean<0>(el_a, succession); });
 
@@ -287,14 +290,23 @@ void run_bench(int argc, char* argv[]) {
                 return triangle_count_v6(cel_a.begin(), cel_a.end(), thread);
               case 7:
                 return triangle_count_v7(cel_a);
+#if NWGRAPH_USE_HPX
+             case  8: return triangle_count_v7(cel_a, hpx::execution::seq, hpx::execution::par_unseq);
+             case  9: return triangle_count_v7(cel_a, hpx::execution::par_unseq, hpx::execution::par_unseq);
+#else
               case 8:
                 return triangle_count_v7(cel_a, std::execution::seq, std::execution::par_unseq);
               case 9:
                 return triangle_count_v7(cel_a, std::execution::par_unseq, std::execution::par_unseq);
+#endif
               case 10:
                 return triangle_count_v10(cel_a);
+#if NWGRAPH_USE_HPX
+             case 11: return triangle_count_v10(cel_a, hpx::execution::par_unseq, hpx::execution::par_unseq, hpx::execution::par_unseq);
+#else
               case 11:
                 return triangle_count_v10(cel_a, std::execution::par_unseq, std::execution::par_unseq, std::execution::par_unseq);
+#endif
               case 12:
                 return triangle_count_v12(cel_a, thread);
               case 13:

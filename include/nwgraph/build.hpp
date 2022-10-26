@@ -31,7 +31,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-
+#include <ranges>
 
 #include "graph_concepts.hpp"
 
@@ -141,11 +141,20 @@ auto fill_adj_list(edge_list_t& el, adj_list_t& al) {
 
 template <class Vector1, class Vector2, class Perm>
 void permute(const Vector1& vec1, Vector2& vec2, const Perm& perm) {
+
+#if(NWGRAPH_USE_TBB)
   tbb::parallel_for(tbb::blocked_range(0ul, perm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       vec2[i] = vec1[perm[i]];
     }
   });
+#elif(NWGRAPH_USE_TBB)
+  hpx::ranges::for_each(std::ranges::views::iota(0ul, perm.size()), [&](auto&& r) {
+    for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+        vec2[i] = vec1[perm[i]];
+    }
+    });
+#endif
 }
 
 template <edge_list_graph edge_list_t, adjacency_list_graph adjacency_t, class Perm, size_t... Is>
@@ -446,13 +455,21 @@ void remove_self_loops(edge_list_t& el) {
 template <degree_enumerable_graph Graph, class ExecutionPolicy = default_execution_policy>
 auto degrees(const Graph& graph, ExecutionPolicy&& policy = {}) {
   std::vector<vertex_id_t<Graph>> degree_v(num_vertices(graph));
-
+#if(NWGRAPH_USE_TBB)
   tbb::parallel_for(tbb::blocked_range(0ul, degree_v.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       degree_v[i] = degree(graph[i]);
     }
   });
+#elif(NWGRAPH_USE_HPX)
+  hpx::ranges::for(std::ranges::views::iota(0ul, degree_v.size()), [&](auto&& r) {
+      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+          degree_v[i] = degree(graph[i]);
+      }
+      });
+#endif
   return degree_v;
+
 }
 
 
@@ -522,12 +539,19 @@ auto perm_by_degree(edge_list_t& el, const Vector& degree, std::string direction
 
   std::vector<typename edge_list_t::vertex_id_type> perm(degree.size());
 
+#if(NWGRAPH_USE_TBB)
   tbb::parallel_for(tbb::blocked_range(0ul, perm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       perm[i] = i;
     }
   });
-
+#elif(NWGRAPH_USE_HPX)
+  hpx::ranges::for_each(std::ranges::views::iota(0ul, perm.size()), [&](auto&& r) {
+      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+          perm[i] = i;
+      }
+      });
+#endif
   auto d = degree.begin();
 
   if (direction == "descending") {
@@ -557,12 +581,19 @@ requires(true == is_unipartite<typename edge_list_t::unipartite_graph_base>::val
                                                                                                  ExecutionPolicy&& policy = {}) {
   std::vector<typename edge_list_t::vertex_id_type> iperm(perm.size());
 
+#if(NWGRAPH_USE_TBB)
   tbb::parallel_for(tbb::blocked_range(0ul, iperm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       iperm[perm[i]] = i;
     }
   });
-
+#elif(NWGRAPH_USE_HPX)
+  hpx::for_each(std::ranges::views::iota(0ul, iperm.size()), [&](auto&& r) {
+      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+          iperm[perm[i]] = i;
+      }
+      });
+#endif
   std::for_each(policy, el.begin(), el.end(), [&](auto&& x) {
     std::get<0>(x) = iperm[std::get<0>(x)];
     std::get<1>(x) = iperm[std::get<1>(x)];
@@ -586,13 +617,19 @@ template <int idx, edge_list_graph edge_list_t, class Vector, class ExecutionPol
 requires(false == is_unipartite<typename edge_list_t::bipartite_graph_base>::value) auto relabel(edge_list_t& el, const Vector& perm,
                                                                                                  ExecutionPolicy&& policy = {}) {
   std::vector<typename edge_list_t::vertex_id_type> iperm(perm.size());
-
+#if(NWGRAPH_USE_TBB)
   tbb::parallel_for(tbb::blocked_range(0ul, iperm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       iperm[perm[i]] = i;
     }
   });
-
+#elif(NWGRAPH_USE_HPX)
+  hpx::for_each(std::ranges::views::iota(0ul, iperm.size()), [&](auto&& r) {
+      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+          iperm[perm[i]] = i;
+      }
+      });
+#endif
   std::for_each(policy, el.begin(), el.end(), [&](auto&& x) { std::get<idx>(x) = iperm[std::get<idx>(x)]; });
   return iperm;
 }

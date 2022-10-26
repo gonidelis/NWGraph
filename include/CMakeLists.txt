@@ -96,6 +96,21 @@ target_sources(nwgraph
   nwgraph/coo.hpp)
 
 
+# if(NWGRAPH_USE_TBB)
+#   set(THREADS_PREFER_PTHREAD_FLAG ON)
+#   find_package(TBB REQUIRED)
+#   find_package(Threads REQUIRED)
+#   target_compile_definitions(nwgraph INTERFACE EXECUTION_POLICY NWGRAPH_USE_TBB)
+#   target_link_libraries(nwgraph INTERFACE TBB::tbb Threads::Threads)
+#   if (NWGRAPH_USE_TBBMALLOC)
+#     target_link_libraries(nwgraph INTERFACE TBB::tbbmalloc)
+#   endif ()
+# elseif(NWGRAPH_USE_HPX)
+#   find_package(HPX REQUIRED)
+#   target_compile_definitions(nwgraph INTERFACE EXECUTION_POLICY NWGRAPH_USE_HPX)
+#   target_link_libraries(nwgraph INTERFACE HPX::hpx HPX::wrap_main)
+# endif()
+
 # -----------------------------------------------------------------------------
 # Handle Apple-specific things
 # -----------------------------------------------------------------------------

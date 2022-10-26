@@ -55,16 +55,25 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 message("Architecture is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
-if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL arm64)
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fno-elide-constructors -fconcepts-diagnostics-depth=3 " CACHE STRING "" FORCE)
-  set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG " CACHE STRING "" FORCE)
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Ofast -g -DNDEBUG" CACHE STRING "" FORCE)
-  set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG " CACHE STRING "" FORCE)
+if(NOT MSVC)
+  if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL arm64)
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fno-elide-constructors -fconcepts-diagnostics-depth=3 " CACHE STRING "" FORCE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG " CACHE STRING "" FORCE)
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Ofast -g -DNDEBUG" CACHE STRING "" FORCE)
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -DNDEBUG " CACHE STRING "" FORCE)
+  else()
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fno-elide-constructors -fconcepts-diagnostics-depth=3 " CACHE STRING "" FORCE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native -DNDEBUG " CACHE STRING "" FORCE)
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Ofast -g -march=native -DNDEBUG" CACHE STRING "" FORCE)
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native -DNDEBUG " CACHE STRING "" FORCE)
+  endif()
 else()
-  set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -fno-elide-constructors -fconcepts-diagnostics-depth=3 " CACHE STRING "" FORCE)
-  set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native -DNDEBUG " CACHE STRING "" FORCE)
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Ofast -g -march=native -DNDEBUG" CACHE STRING "" FORCE)
-  set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os -march=native -DNDEBUG " CACHE STRING "" FORCE)
+  add_compile_definitions(_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+  add_compile_definitions(NOMINMAX)
+  # suppress warnings:
+  # 4244: 'return': conversion from 'xxx' to 'yyy', possible loss of data
+  # 4267: 'argument': conversion from 'xxx' to 'yyy', possible loss of data
+  add_compile_options(-wd4244 -wd4267)
 endif()
 
 # Default to Release build
@@ -86,6 +95,12 @@ if (NWGRAPH_SANITIZE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=${NWGRAPH_SANITIZE}")
   set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=${NWGRAPH_SANITIZE}")
 endif (NWGRAPH_SANITIZE)
+
+option(NWGRAPH_USE_TBB "Use TBB for parallelization" OFF)
+option(NWGRAPH_USE_HPX "Use HPX for parallelization" ON)
+if(NWGRAPH_USE_TBB AND NWGRAPH_USE_HPX)
+  message(FATAL "Can only enable one, TBB or HPX as parallelization backend")
+endif()
 
 option(NWGRAPH_BUILD_APBS "Determines whether to build abstraction penalty benchmarks." OFF)
 option(NWGRAPH_BUILD_BENCH "Determines whether to build performance benchmarks." OFF)
@@ -118,38 +133,52 @@ include(FetchContent)
 
 # Use fetch content rather than as a submodule
 include(FetchContent)
-FetchContent_Declare(
+
+if (NWGRAPH_USE_TBB)
+  FetchContent_Declare(
   oneTBB
   GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
-#  GIT_TAG v2021.5.0
-)
-message(STATUS "Fetching TBB")
+  #  GIT_TAG v2021.5.0
+  )
+  message(STATUS "Fetching TBB")
 
-FetchContent_MakeAvailable(oneTBB)
+  FetchContent_MakeAvailable(oneTBB)
+elseif (NWGRAPH_USE_HPX)
+  FetchContent_Declare(
+  HPX
+  GIT_REPOSITORY https://github.com/STEllAR-GROUP/hpx.git
+  #  GIT_TAG 1.8.1
+  )
+  message(STATUS "Fetching HPX")
+
+  FetchContent_MakeAvailable(HPX)
+endif()
 
 else()
 
 # add_subdirectory(external/oneTBB)
-find_package(TBB REQUIRED)
+if (NWGRAPH_USE_TBB)
+  # find_package(TBB REQUIRED)
+elseif (NWGRAPH_USE_HPX)
+  find_package(HPX REQUIRED)
+endif()
 
 endif()
 
-# find_package(TBB REQUIRED)
+if(NWGRAPH_USE_TBB)
+  find_package(Threads REQUIRED)
 
-# find_package(TBB)
-# if (not TBB_Found)
-#   FetchContent(
-#     TBB_STUFF)
-# endif()
-
-find_package(Threads REQUIRED)
-
-add_library(nwgraph_tbb INTERFACE)
-target_compile_definitions(nwgraph_tbb INTERFACE EXECUTION_POLICY)
-target_link_libraries(nwgraph_tbb INTERFACE TBB::tbb Threads::Threads)
-if (NWGRAPH_USE_TBBMALLOC)
-  target_link_libraries(nwgraph_tbb INTERFACE TBB::tbbmalloc) 
-endif ()
+  add_library(nwgraph_tbb INTERFACE)
+  target_compile_definitions(nwgraph_tbb INTERFACE EXECUTION_POLICY)
+  target_link_libraries(nwgraph_tbb INTERFACE TBB::tbb Threads::Threads)
+  if (NWGRAPH_USE_TBBMALLOC)
+    target_link_libraries(nwgraph_tbb INTERFACE TBB::tbbmalloc) 
+  endif ()
+elseif(NWGRAPH_USE_HPX)  
+  add_library(nwgraph_hpx INTERFACE)
+  target_compile_definitions(nwgraph_hpx INTERFACE EXECUTION_POLICY)
+  target_link_libraries(nwgraph_hpx INTERFACE HPX::hpx)
+endif()
 
 include(Docopt)
 

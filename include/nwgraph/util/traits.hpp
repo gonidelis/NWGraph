@@ -17,7 +17,9 @@
 
 #include <atomic>
 #include <iterator>
+#if NWGRAPH_USE_TBB
 #include <tbb/blocked_range.h>
+#endif
 #include <tuple>
 
 namespace nw {
@@ -48,8 +50,10 @@ using remove_atomic_t = typename remove_atomic<T>::type;
 
 template <class>
 inline constexpr bool is_tbb_range_v = false;
+#if NWGRAPH_USE_TBB
 template <class T>
 inline constexpr bool is_tbb_range_v<tbb::blocked_range<T>> = true;
+#endif
 
 template <class>
 inline constexpr bool is_tuple_v = false;
