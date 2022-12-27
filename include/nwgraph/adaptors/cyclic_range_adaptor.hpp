@@ -51,6 +51,10 @@ public:
       : begin_(rhs.begin_), end_(rhs.end_), cutoff_(rhs.cutoff_), cycle_(rhs.cycle_ + rhs.stride_), stride_(rhs.stride_ *= 2) {}
 #endif
   struct iterator {
+
+    using pointer = const cyclic_range_adaptor*; // ??? dummy alias - still does not work
+    using iterator_category = std::random_access_iterator_tag;
+
     Iterator        i_;
     difference_type stride_;
 
@@ -62,6 +66,7 @@ public:
     }
 
     bool operator!=(const iterator& rhs) const { return i_ != rhs.i_; }
+    bool operator==(const iterator& rhs) const { return i_ == rhs.i_; }
   };
 
   /// Return an iterator that points to the start of the cycle.
@@ -101,7 +106,9 @@ cyclic_range_adaptor(Range&& range, Cutoff) -> cyclic_range_adaptor<decltype(ran
 
 template <class Range, class Cutoff>
 constexpr decltype(auto) cyclic(Range&& range, Cutoff cutoff) {
+
   return cyclic_range_adaptor{std::forward<Range>(range), cutoff};
+    //return std::forward<Range>(range);
 }
 }    // namespace graph
 }    // namespace nw
