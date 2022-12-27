@@ -50,7 +50,16 @@ public:
   cyclic_range_adaptor(cyclic_range_adaptor& rhs, tbb::split)
       : begin_(rhs.begin_), end_(rhs.end_), cutoff_(rhs.cutoff_), cycle_(rhs.cycle_ + rhs.stride_), stride_(rhs.stride_ *= 2) {}
 #endif
+
   struct iterator {
+
+    using traits = std::iterator_traits<Iterator>;
+    using pointer = typename traits::pointer;
+    using value_type = typename traits::value_type;
+    using reference = typename traits::reference;
+    using difference_type = typename traits::difference_type;
+    using iterator_category = typename traits::iterator_category;
+
     Iterator        i_;
     difference_type stride_;
 
@@ -61,8 +70,52 @@ public:
       return *this;
     }
 
+    iterator operator++(int)
+    {
+        iterator orig(*this);
+        ++(*this);
+        return orig;
+    }
+
+    iterator& operator--()
+    {
+        i_ -= stride_;
+        return *this;
+    }
+
+    iterator operator--(int)
+    {
+        iterator orig(*this);
+        --(*this);
+        return orig;
+    }
+
+    iterator& operator+=(std::size_t n)
+    {
+        i_ += stride_ * n;
+        return *this;
+    }
+
+    iterator& operator-=(std::size_t n)
+    {
+        i_ -= stride_ * n;
+        return *this;
+    }
+
+    difference_type operator+(iterator const& rhs) const
+    {
+        return (i_ + rhs.i_) / stride_;
+    }
+
+    difference_type operator-(iterator const& rhs) const
+    {
+        return (i_ - rhs.i_) / stride_;
+    }
+
     bool operator!=(const iterator& rhs) const { return i_ != rhs.i_; }
+    bool operator==(const iterator& rhs) const { return i_ == rhs.i_; }
   };
+
 
   /// Return an iterator that points to the start of the cycle.
   iterator begin() const { return {begin_ + cycle_, stride_}; }
@@ -101,7 +154,9 @@ cyclic_range_adaptor(Range&& range, Cutoff) -> cyclic_range_adaptor<decltype(ran
 
 template <class Range, class Cutoff>
 constexpr decltype(auto) cyclic(Range&& range, Cutoff cutoff) {
+
   return cyclic_range_adaptor{std::forward<Range>(range), cutoff};
+    //return std::forward<Range>(range);
 }
 }    // namespace graph
 }    // namespace nw
