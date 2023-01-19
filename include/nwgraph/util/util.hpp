@@ -42,13 +42,13 @@ public:
     counting_output_iterator& operator++() const { return *this; }
     counting_output_iterator& operator++(int) { return *this; }
 
-    counting_output_iterator& operator--() { ptr--; return *this; }
-    counting_output_iterator operator--(int) { random_iter tmp(ptr); ptr--; return tmp; }
+    counting_output_iterator& operator--() { return *this; }
+    //counting_output_iterator operator--(int) { /*random_iter tmp(ptr); ptr--;*/ return tmp; }
 
     counting_output_iterator& operator+(difference_type n) { /*ptr + n;*/ return *this; }  // friend
     counting_output_iterator& operator-(difference_type n) { /*ptr - n;*/ return *this; }  // friend
 
-    friend difference_type operator-(counting_output_iterator const& lhs, counting_output_iterator const& rhs) { return lhs.ptr - rhs.ptr; }
+    friend difference_type operator-(counting_output_iterator const& lhs, counting_output_iterator const& rhs) { return lhs.count - rhs.count; }
 
     auto operator<=>(counting_output_iterator const& it) const { return true; }
 
@@ -100,16 +100,29 @@ struct min {
 ///
 /// @tparam           T The underlying type of the counter.
 template <class T = std::size_t>
-struct counter : public std::iterator<std::output_iterator_tag, std::ptrdiff_t> {
+struct counter : public std::iterator<std::random_access_iterator_tag, std::ptrdiff_t> {
   T count;
 
-  counter(T init = {}) : count(init) {}
+  explicit counter(T init = {}) : count(init) {}
 
-  constexpr operator T() const { return count; }
+  constexpr explicit operator T() const { return count; }
 
   counter& operator++() { return *this; }
   counter& operator++(int) { return *this; }
+
+  counter& operator+=(int) { return *this; }
+  counter& operator-=(int) { return *this; }
+
+  counter& operator+(difference_type) { return *this; }
+  counter& operator-(difference_type) { return *this; }
+
+  difference_type operator-(counter const& c_iter) const { return count - c_iter.count; }
+  
+  //counter* operator->() const { return this; }
+
   counter& operator*() { return *this; }
+
+  auto operator<=>(counter const& it) const { return true; }
 
   template <class U>
   decltype(auto) operator=(U) {

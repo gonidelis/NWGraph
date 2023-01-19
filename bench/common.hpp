@@ -34,7 +34,7 @@
 #if NWGRAPH_USE_TBB
 #include <tbb/global_control.h>
 #elif NWGRAPH_USE_HPX
-#include <hpx/include/parallel_for_each.hpp>
+#include <hpx/parallel/algorithm.hpp>
 #endif
 #include <tuple>
 #include <type_traits>

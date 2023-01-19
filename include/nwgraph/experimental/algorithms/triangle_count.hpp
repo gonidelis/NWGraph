@@ -304,7 +304,12 @@ NWGRAPH_ATTRIBUTE_NOINLINE std::size_t triangle_count_v10(const Graph& A, OuterE
 /// @param          set The execution policy for the set intersection.
 ///
 /// @returns            The number of triangles in the graph.
-template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution::sequenced_policy>
+template <adjacency_list_graph Graph, 
+#if NWGRAPH_USE_HPX
+    class SetExecutionPolicy = hpx::execution::sequenced_policy>
+#else
+    class SetExecutionPolicy = std::execution::sequenced_policy>
+#endif
 NWGRAPH_ATTRIBUTE_NOINLINE std::size_t triangle_count_v12(const Graph& graph, int stride, SetExecutionPolicy&& set = {}) {
   return nw::graph::parallel_reduce(
       nw::graph::cyclic(graph, stride),

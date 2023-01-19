@@ -115,11 +115,14 @@ void parallel_for(Range&& range, Op&& op) {
                       [&](auto&& sub) { parallel_for_sequential(std::forward<decltype(sub)>(sub), std::forward<Op>(op)); });
 #elif(NWGRAPH_USE_HPX)
       hpx::ranges::for_each(hpx::execution::par, std::forward<Range>(range),
-          [&](auto&& sub) { parallel_for_sequential(std::forward<decltype(sub)>(sub), std::forward<Op>(op)); });
+          std::forward<Op>(op));
 #endif
-
   } else {
+#if(NWGRAPH_USE_HPX)
+    hpx::ranges::for_each(std::forward<Range>(range), std::forward<Op>(op));
+#else 
     parallel_for_sequential(std::forward<Range>(range), std::forward<Op>(op));
+#endif
   }
 }
 
@@ -142,7 +145,7 @@ void parallel_for(Range&& range, Op&& op) {
 /// @returns            The result of `reduce(op(i), ...)` for all `i` in
 ///                     `range`.
 template <class Range, class Op, class Reduce, class T>
-auto parallel_reduce(Range&& range, Op&& op, Reduce&& reducee, T init) {
+auto parallel_reduce(Range&& range, Op&& op, Reduce&& reduce, T init) {
   if (range.is_divisible()) {
 #if(NWGRAPH_USE_TBB)
     return tbb::parallel_reduce(
@@ -150,13 +153,21 @@ auto parallel_reduce(Range&& range, Op&& op, Reduce&& reducee, T init) {
         [&](auto&& sub, auto partial) { return parallel_for_sequential(std::forward<decltype(sub)>(sub), op, reduce, partial); }, reduce);
 #elif(NWGRAPH_USE_HPX)
     return hpx::ranges::transform_reduce(hpx::execution::par,
-        std::forward<Range>(range), init, std::forward<Reduce>(reducee),
+        std::forward<Range>(range), init, std::forward<Reduce>(reduce),
         [&](auto&& elem) {
             return parallel_for_inner(op, std::forward<decltype(elem)>(elem));
         });
 #endif
   } else {
-    return parallel_for_sequential(std::forward<Range>(range), std::forward<Op>(op), std::forward<Reduce>(reducee), init);
+#if NWGRAPH_USE_HPX
+      return hpx::ranges::transform_reduce(std::forward<Range>(range), init,
+          std::forward<Reduce>(reduce),
+          [&](auto&& elem) {
+              return parallel_for_inner(op, std::forward<decltype(elem)>(elem));
+          });
+#else
+    return parallel_for_sequential(std::forward<Range>(range), std::forward<Op>(op), std::forward<Reduce>(reduce), init);
+#endif
   }
 }
 }    // namespace graph

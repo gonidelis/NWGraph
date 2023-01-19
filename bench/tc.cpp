@@ -38,7 +38,7 @@ static constexpr const char USAGE[] =
 )";
 
 #if NWGRAPH_USE_HPX
-#include<hpx/hpx_main.hpp>
+#include <hpx/hpx_main.hpp>
 #endif
 #include "nwgraph/adjacency.hpp"
 #include "nwgraph/edge_list.hpp"

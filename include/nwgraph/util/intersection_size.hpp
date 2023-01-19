@@ -20,6 +20,11 @@
 #include <dpstd/execution>
 #include <dpstd/numeric>
 #else
+#if NWGRAPH_USE_HPX
+#include <hpx/algorithm.hpp>
+#include <hpx/execution.hpp>
+#include <hpx/numeric.hpp>
+#endif
 #include <algorithm>
 #include <execution>
 #include <numeric>
@@ -59,6 +64,13 @@ std::size_t intersection_size(A i, B&& ie, C j, D&& je, ExecutionPolicy&& ep) {
   // @todo We really don't need set intersection. You'd hope that it would be
   //       efficient with the output counter, but it just isn't. Parallelizing
   //       the intersection size seems non-trivial though.
+#if NWGRAPH_USE_HPX
+  // nw::graph::counter is an output_iterator, will only compile with sequential HPX algorithms
+  return std::size_t(hpx::set_intersection(
+      std::forward<A>(i), std::forward<B>(ie),
+      std::forward<C>(j), std::forward<D>(je),
+      nw::graph::counter{}, lt));
+#else
   if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>) {
     std::size_t n = 0;
     while (i != ie && j != je) {
@@ -75,9 +87,10 @@ std::size_t intersection_size(A i, B&& ie, C j, D&& je, ExecutionPolicy&& ep) {
     return n;
     (void)ep;
   } else {
-    return std::set_intersection(std::forward<ExecutionPolicy>(ep), std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j),
-                                 std::forward<D>(je), nw::graph::counter{}, lt);
+    return std::size_t(std::set_intersection(std::forward<ExecutionPolicy>(ep), std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j),
+                                 std::forward<D>(je), nw::graph::counter{}, lt));
   }
+#endif
 }
 
 /// A convenience overload for `intersection_size`.
@@ -95,8 +108,13 @@ std::size_t intersection_size(A i, B&& ie, C j, D&& je, ExecutionPolicy&& ep) {
 /// @param           ep The parallel execution policy.
 ///
 /// @returns            The size of the intersected set.
+#if NWGRAPH_USE_HPX
+template <class R, class S, class ExecutionPolicy,
+          std::enable_if_t<hpx::is_execution_policy_v<std::decay_t<ExecutionPolicy>>, void**> = nullptr>
+#else
 template <class R, class S, class ExecutionPolicy,
           std::enable_if_t<std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>, void**> = nullptr>
+#endif
 std::size_t intersection_size(R&& i, S&& j, ExecutionPolicy&& ep) {
   return intersection_size(i.begin(), i.end(), j.begin(), j.end(), std::forward<ExecutionPolicy>(ep));
 }
@@ -118,8 +136,13 @@ std::size_t intersection_size(R&& i, S&& j, ExecutionPolicy&& ep) {
 /// @param           ep The parallel execution policy.
 ///
 /// @returns            The size of the intersected set.
+#if NWGRAPH_USE_HPX
+template <class A, class B, class Range, class ExecutionPolicy,
+          std::enable_if_t<hpx::is_execution_policy_v<std::decay_t<ExecutionPolicy>>, void**> = nullptr>
+#else
 template <class A, class B, class Range, class ExecutionPolicy,
           std::enable_if_t<std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>, void**> = nullptr>
+#endif
 std::size_t intersection_size(A&& i, B&& ie, Range&& j, ExecutionPolicy&& ep) {
   return intersection_size(std::forward<A>(i), std::forward<B>(ie), j.begin(), j.end(), std::forward<ExecutionPolicy>(ep));
 }
@@ -141,7 +164,11 @@ std::size_t intersection_size(A&& i, B&& ie, Range&& j, ExecutionPolicy&& ep) {
 /// @param           je The end of the second range.
 ///
 /// @returns            The size of the intersected set.
+#if NWGRAPH_USE_HPX 
+template <class A, class B, class C, class D, std::enable_if_t<!hpx::is_execution_policy_v<std::decay_t<D>>, void**> = nullptr>
+#else
 template <class A, class B, class C, class D, std::enable_if_t<!std::is_execution_policy_v<std::decay_t<D>>, void**> = nullptr>
+#endif
 std::size_t intersection_size(A&& i, B&& ie, C&& j, D&& je) {
   return intersection_size(std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j), std::forward<D>(je), std::execution::seq);
 }
@@ -160,7 +187,12 @@ std::size_t intersection_size(A&& i, B&& ie, C&& j, D&& je) {
 /// @returns            The size of the intersected set.
 template <class R, class S>
 std::size_t intersection_size(R&& i, S&& j) {
-  return intersection_size(i.begin(), i.end(), j.begin(), j.end(), std::execution::seq);
+  return intersection_size(i.begin(), i.end(), j.begin(), j.end(), 
+#if NWGRAPH_USE_HPX 
+      hpx::execution::seq);
+#else
+      std::execution::seq);
+#endif
 }
 
 /// A convenience overload for `intersection_size`.
@@ -179,9 +211,17 @@ std::size_t intersection_size(R&& i, S&& j) {
 /// @param            j The second range.
 ///
 /// @returns            The size of the intersected set.
+#if NWGRAPH_USE_HPX
+template <class A, class B, class Range, std::enable_if_t<!hpx::is_execution_policy_v<std::decay_t<Range>>, void**> = nullptr>
+#else
 template <class A, class B, class Range, std::enable_if_t<!std::is_execution_policy_v<std::decay_t<Range>>, void**> = nullptr>
+#endif
 std::size_t intersection_size(A&& i, B&& ie, Range&& j) {
+#if NWGRAPH_USE_HPX
+  return intersection_size(std::forward<A>(i), std::forward<B>(ie), j.begin(), j.end(), hpx::execution::seq);
+#else
   return intersection_size(std::forward<A>(i), std::forward<B>(ie), j.begin(), j.end(), std::execution::seq);
+#endif
 }
 }    // namespace graph
 }    // namespace nw

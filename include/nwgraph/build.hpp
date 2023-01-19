@@ -37,6 +37,8 @@
 
 #include "nwgraph/containers/zip.hpp"
 
+#include <hpx/algorithm.hpp>
+
 
 namespace nw {
 namespace graph {
@@ -462,7 +464,7 @@ auto degrees(const Graph& graph, ExecutionPolicy&& policy = {}) {
     }
   });
 #elif(NWGRAPH_USE_HPX)
-  hpx::ranges::for(std::ranges::views::iota(0ul, degree_v.size()), [&](auto&& r) {
+  hpx::ranges::for_each(std::ranges::views::iota(0ul, degree_v.size()), [&](auto&& r) {
       for (auto i = r.begin(), e = r.end(); i != e; ++i) {
           degree_v[i] = degree(graph[i]);
       }
