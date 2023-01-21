@@ -83,8 +83,10 @@ struct struct_of_arrays : std::tuple<std::vector<Attributes>...> {
     soa_t*      soa_;
 
   public:
-    using value_type        = std::conditional_t<is_const, std::tuple<const typename std::vector<Attributes>::value_type...>,
-						 std::tuple<typename std::vector<Attributes>::value_type...>>;
+    using value_type        = std::conditional_t<is_const, std::tuple<select_access_type<typename std::vector<Attributes>::const_iterator>...>,
+      std::tuple<select_access_type<typename std::vector<Attributes>::iterator>...>>;
+//    using value_type        = std::conditional_t<is_const, std::tuple<const typename std::vector<Attributes>::value_type...>,
+//                                 std::tuple<typename std::vector<Attributes>::value_type...>>;
     using difference_type   = std::ptrdiff_t;
     using reference        = std::conditional_t<is_const, std::tuple<select_access_type<typename std::vector<Attributes>::const_iterator>...>,
       std::tuple<select_access_type<typename std::vector<Attributes>::iterator>...>>;
@@ -111,11 +113,11 @@ struct struct_of_arrays : std::tuple<std::vector<Attributes>...> {
     auto operator<=>(const soa_iterator&) const = default;
 
     soa_iterator operator++(int) {
-      return soa_iterator(i_++, soa_);
+      return soa_iterator(soa_, i_++);
     }
 
     soa_iterator operator--(int) {
-      return soa_iterator(i_--, soa_);
+      return soa_iterator(soa_, i_--);
     }
 
     soa_iterator& operator++() {

@@ -60,7 +60,7 @@ template <int idx, edge_list_graph edge_list_t, class ExecutionPolicy = default_
 void lexical_sort_by(edge_list_t& el, ExecutionPolicy&& policy = {}) {
   static_assert(std::is_same_v<decltype(el.begin()), typename edge_list_t::iterator>);
 
-  const int jdx = (idx + 1) % 2;
+  // const int jdx = (idx + 1) % 2;
 
   if constexpr (idx == 0) {
     std::sort(policy, el.begin(), el.end());
