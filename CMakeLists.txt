@@ -70,6 +70,7 @@ if(NOT MSVC)
 else()
   add_compile_definitions(_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   add_compile_definitions(NOMINMAX)
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
   # suppress warnings:
   # 4244: 'return': conversion from 'xxx' to 'yyy', possible loss of data
   # 4267: 'argument': conversion from 'xxx' to 'yyy', possible loss of data

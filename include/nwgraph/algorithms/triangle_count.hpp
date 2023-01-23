@@ -78,7 +78,7 @@ std::size_t triangle_count_async(std::size_t threads, Op&& op) {
   }
 
   // Reduce the outcome.
-  int         i         = 0;
+  //int         i         = 0;
   std::size_t triangles = 0;
   for (auto&& f : futures) {
     triangles += f.get();
