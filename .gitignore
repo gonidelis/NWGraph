@@ -40,7 +40,9 @@ CMakeCache.txt
 attic
 basement
 build
+build_clangcl
 build.docker
+.vs
 
 .DS_Store
 __pycache__

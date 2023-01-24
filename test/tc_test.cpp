@@ -93,17 +93,17 @@ TEST_CASE("triangle counting", "[tc]") {
     REQUIRE(triangles == 45);
   }
 
-//  SECTION("v12") {
-//    size_t triangles = triangle_count_v12(A, 1);
-//    std::cout << triangles << " triangles (v12)\n";
-//    REQUIRE(triangles == 45);
-//  }
+  SECTION("v12") {
+    size_t triangles = triangle_count_v12(A, 1);
+    std::cout << triangles << " triangles (v12)\n";
+    REQUIRE(triangles == 45);
+  }
 
-//  SECTION("v13") {
-//    size_t triangles = triangle_count_v13(A, 1);
-//    std::cout << triangles << " triangles (v13)\n";
-//    REQUIRE(triangles == 45);
-//  }
+  SECTION("v13") {
+    size_t triangles = triangle_count_v13(A, 1);
+    std::cout << triangles << " triangles (v13)\n";
+    REQUIRE(triangles == 45);
+  }
 
   SECTION("v14") {
     size_t triangles = triangle_count_v14(A);

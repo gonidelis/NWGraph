@@ -102,10 +102,15 @@ public:
         return *this;
     }
 
-    //difference_type operator+(iterator const& rhs) const
-    //{
-    //    return (i_ + rhs.i_) / stride_;
-    //}
+    friend iterator operator+(iterator it, difference_type const n)
+    {
+        return it += n;
+    }
+
+    friend iterator operator+(difference_type const n, iterator it)
+    {
+        return it += n;
+    }
 
     difference_type operator-(iterator const& rhs) const
     {
