@@ -72,10 +72,17 @@ size_t triangle_count(const GraphT& A) {
 template <class Op>
 std::size_t triangle_count_async(std::size_t threads, Op&& op) {
   // Launch the workers.
+#if NWGRAPH_USE_HPX
+  std::vector<hpx::future<size_t>> futures(threads);
+  for (std::size_t tid = 0; tid < threads; ++tid) {
+      futures[tid] = hpx::async(hpx::launch::async, op, tid);
+  }
+#else
   std::vector<std::future<size_t>> futures(threads);
   for (std::size_t tid = 0; tid < threads; ++tid) {
     futures[tid] = std::async(std::launch::async, op, tid);
   }
+#endif
 
   // Reduce the outcome.
   //int         i         = 0;

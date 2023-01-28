@@ -48,7 +48,7 @@ auto set_n_threads(long n) {
 #if NWGRAPH_USE_TBB
     return tbb::global_control(tbb::global_control::max_allowed_parallelism, n);
 #else
-    return 0;
+    return hpx::get_num_worker_threads();
 #endif
 }
 
@@ -74,12 +74,12 @@ std::vector<long> parse_n_threads(const std::vector<std::string>& args) {
   }
 #elif NWGRAPH_USE_HPX
   if (args.size() == 0) {
-    threads.push_back(hpx::get_worker_thread_num());
+    threads.push_back(hpx::get_worker_thread_num()); // get_num_worker_threads instead?
   } 
   else 
   {
     for (auto&& n : args) {
-      threads.push_back(std::stol(n));
+      threads.push_back(hpx::get_num_worker_threads());
     }
   }
 #else

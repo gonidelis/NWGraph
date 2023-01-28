@@ -121,10 +121,9 @@ static std::size_t TCVerifier(Graph& graph) {
   for (auto&& [u, v] : edge_range(graph)) {
     auto u_out = graph[u];
     auto v_out = graph[v];
-    auto end   = std::set_intersection(u_out.begin(), u_out.end(), v_out.begin(), v_out.end(), intersection.begin());
-    intersection.resize(end - intersection.begin());
-    total += intersection.size();
+    auto end   = std::set_intersection(u_out.begin(), u_out.end(), v_out.begin(), v_out.end(), std::back_inserter(intersection));
   }
+  total = intersection.size();
   return total;    // note that our processed Graph doesn't produce extra counts
                    // like the GAP verifier normally would
 }
@@ -370,6 +369,8 @@ void run_bench(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
   std::vector<std::string> strings(argv + 1, argv + argc);
   auto                     args = docopt::docopt(USAGE, strings, true);
+
+  std::cout << hpx::get_num_worker_threads() << std::endl;
 
   if (args["--format"].asString() == "CSR") {
     run_bench<adjacency<0>>(argc, argv);

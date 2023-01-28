@@ -28,8 +28,8 @@
 #else
 #endif
 #include <io.h>
-#include <stdio.h>
 #include <windows.h>
+#include <stdio.h>
 #include <tchar.h>
 #include <cwchar>
 #include <comdef.h> 
