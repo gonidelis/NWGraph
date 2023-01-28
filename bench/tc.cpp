@@ -121,10 +121,9 @@ static std::size_t TCVerifier(Graph& graph) {
   for (auto&& [u, v] : edge_range(graph)) {
     auto u_out = graph[u];
     auto v_out = graph[v];
-    auto end   = std::set_intersection(u_out.begin(), u_out.end(), v_out.begin(), v_out.end(), intersection.begin());
-    intersection.resize(end - intersection.begin());
-    total += intersection.size();
+    auto end   = std::set_intersection(u_out.begin(), u_out.end(), v_out.begin(), v_out.end(), std::back_inserter(intersection));
   }
+  total = intersection.size();
   return total;    // note that our processed Graph doesn't produce extra counts
                    // like the GAP verifier normally would
 }
