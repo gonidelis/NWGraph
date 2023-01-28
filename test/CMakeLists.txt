@@ -9,16 +9,17 @@ macro (nwgraph_add_exe EXENAME)
 endmacro (nwgraph_add_exe)
 
 macro (nwgraph_add_test TESTNAME)
-  add_executable(${TESTNAME}.exe ${TESTNAME}.cpp)
-  target_link_libraries(${TESTNAME}.exe nwgraph Catch2::Catch2 catch_main)
+  add_executable(${TESTNAME}.exe ${TESTNAME}.cpp hpx_main.cpp)
+  target_link_libraries(${TESTNAME}.exe nwgraph Catch2::Catch2)
   target_compile_definitions(${TESTNAME}.exe PRIVATE DATA_DIR="${CMAKE_SOURCE_DIR}/data/")
   target_compile_definitions(${TESTNAME}.exe PRIVATE DATA_FILE="${CMAKE_SOURCE_DIR}/data/karate.mtx")
   add_test(NAME ${TESTNAME}_test COMMAND ${TESTNAME}.exe)
   #  catch_discover_tests(${TESTNAME})
 endmacro (nwgraph_add_test)
 
-add_library(catch_main STATIC catch_main.cpp)
-target_link_libraries(catch_main Catch2::Catch2)
+
+# add_library(catch_main STATIC catch_main.cpp)
+# target_link_libraries(catch_main Catch2::Catch2)
 
 # Add Catch2 tests
 nwgraph_add_test(aos_test)
