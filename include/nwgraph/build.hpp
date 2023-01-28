@@ -150,12 +150,10 @@ void permute(const Vector1& vec1, Vector2& vec2, const Perm& perm) {
       vec2[i] = vec1[perm[i]];
     }
   });
-#elif(NWGRAPH_USE_TBB)
-  hpx::ranges::for_each(std::ranges::views::iota(0ul, perm.size()), [&](auto&& r) {
-    for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+#elif(NWGRAPH_USE_HPX)
+  hpx::for_loop(hpx::execution::par, 0ul, perm.size(), [&](auto&& i) {
         vec2[i] = vec1[perm[i]];
-    }
-    });
+  });
 #endif
 }
 
@@ -464,11 +462,9 @@ auto degrees(const Graph& graph, ExecutionPolicy&& policy = {}) {
     }
   });
 #elif(NWGRAPH_USE_HPX)
-  hpx::ranges::for_each(std::ranges::views::iota(0ul, degree_v.size()), [&](auto&& r) {
-      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+  hpx::for_loop(hpx::execution::par, 0ul, degree_v.size(), [&](auto&& i) {
           degree_v[i] = degree(graph[i]);
-      }
-      });
+  });
 #endif
   return degree_v;
 
@@ -548,11 +544,9 @@ auto perm_by_degree(edge_list_t& el, const Vector& degree, std::string direction
     }
   });
 #elif(NWGRAPH_USE_HPX)
-  hpx::ranges::for_each(std::ranges::views::iota(0ul, perm.size()), [&](auto&& r) {
-      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+  hpx::for_loop(hpx::execution::par, 0ul, perm.size(), [&](auto&& i) {
           perm[i] = i;
-      }
-      });
+  });
 #endif
   auto d = degree.begin();
 
@@ -590,11 +584,9 @@ requires(true == is_unipartite<typename edge_list_t::unipartite_graph_base>::val
     }
   });
 #elif(NWGRAPH_USE_HPX)
-  hpx::for_each(std::ranges::views::iota(0ul, iperm.size()), [&](auto&& r) {
-      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+  hpx::for_loop(hpx::execution::par, 0ul, iperm.size(), [&](auto&& i) {
           iperm[perm[i]] = i;
-      }
-      });
+  });
 #endif
   std::for_each(policy, el.begin(), el.end(), [&](auto&& x) {
     std::get<0>(x) = iperm[std::get<0>(x)];
@@ -626,11 +618,9 @@ requires(false == is_unipartite<typename edge_list_t::bipartite_graph_base>::val
     }
   });
 #elif(NWGRAPH_USE_HPX)
-  hpx::for_each(std::ranges::views::iota(0ul, iperm.size()), [&](auto&& r) {
-      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+  hpx::for_loop(hpx::execution::par, 0ul, iperm.size(), [&](auto&& i) {
           iperm[perm[i]] = i;
-      }
-      });
+  });
 #endif
   std::for_each(policy, el.begin(), el.end(), [&](auto&& x) { std::get<idx>(x) = iperm[std::get<idx>(x)]; });
   return iperm;

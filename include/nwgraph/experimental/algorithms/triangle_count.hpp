@@ -242,6 +242,15 @@ template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::executio
 NWGRAPH_ATTRIBUTE_NOINLINE
 std::size_t triangle_count_v7(const Graph& A, OuterExecutionPolicy&& outer = {}, InnerExecutionPolicy inner = {}) {
   std::atomic<std::size_t> total_triangles = 0;
+#if NWGRAPH_USE_HPX
+  hpx::ranges::for_each(outer, A, [&](auto&& x) {
+    std::size_t triangles = 0;
+    for (auto&& i = x.begin(), e = x.end(); i != e; ++i) {
+      triangles += nw::graph::intersection_size(i, e, A[std::get<0>(*i)], inner);
+    }
+    total_triangles += triangles;
+  });
+#else
   std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
     std::size_t triangles = 0;
     for (auto &&i = x.begin(), e = x.end(); i != e; ++i) {
@@ -249,6 +258,7 @@ std::size_t triangle_count_v7(const Graph& A, OuterExecutionPolicy&& outer = {},
     }
     total_triangles += triangles;
   });
+#endif
   return total_triangles;
 }
 
@@ -278,11 +288,21 @@ template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::executio
 NWGRAPH_ATTRIBUTE_NOINLINE std::size_t triangle_count_v10(const Graph& A, OuterExecutionPolicy&& outer = {}, InnerExecutionPolicy&& inner = {},
                                                  SetExecutionPolicy&& set = {}) {
   std::atomic<std::size_t> total_triangles = 0;
+#if NWGRAPH_USE_HPX
+  hpx::ranges::for_each(outer, A, [&](auto&& x) {
+    std::atomic<std::size_t> triangles = 0;
+    hpx::for_each(inner, x.begin(), x.end(), [&](auto&& v) {
+      triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set);
+      });
+    total_triangles += triangles;
+  });
+#else
   std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
     std::atomic<std::size_t> triangles = 0;
     std::for_each(inner, x.begin(), x.end(), [&](auto&& v) { triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set); });
     total_triangles += triangles;
   });
+#endif
   return total_triangles;
 }
 
