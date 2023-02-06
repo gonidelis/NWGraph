@@ -26,13 +26,13 @@
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(_WINDOWS)
 #include <unistd.h>
 #else
-#endif
 #include <io.h>
-#include <stdio.h>
 #include <windows.h>
 #include <tchar.h>
 #include <cwchar>
 #include <comdef.h> 
+#endif
+#include <stdio.h>
 
 typedef char char_t; 
 #define CHAR_WIDE
