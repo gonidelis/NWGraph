@@ -48,7 +48,8 @@
 #include "nwgraph/util/demangle.hpp"
 
 #if NWGRAPH_HAVE_HPX
-#include <hpx/algorithm.hpp>
+#include <hpx/parallel/algorithms/for_loop.hpp>
+// #include <hpx/algorithm.hpp>
 #endif
 
 namespace nw {
@@ -409,7 +410,7 @@ public:    // fixme
         degs[i] = indices_[i + 1] - indices_[i];
       }
     });
-#elif  NWGRAPH_HAVE_HPX
+#elif NWGRAPH_HAVE_HPX
     hpx::for_loop(hpx::execution::par, 0ul, indices_.size() - 1, [&](auto&& r) {
       for (auto i = r.begin(), e = r.end(); i != e; ++i) {
           degs[i] = indices_[i + 1] - indices_[i];

@@ -175,7 +175,7 @@ if(NWGRAPH_USE_TBB)
   endif ()
 elseif(NWGRAPH_USE_HPX)  
   add_library(nwgraph_hpx INTERFACE)
-  target_compile_definitions(nwgraph_hpx INTERFACE EXECUTION_POLICY NWGRAPH_HAVE_HPX=1)
+  target_compile_definitions(nwgraph_hpx INTERFACE EXECUTION_POLICY NWGRAPH_HAVE_HPX)
   target_link_libraries(nwgraph_hpx INTERFACE HPX::hpx)
 endif()
 

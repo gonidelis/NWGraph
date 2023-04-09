@@ -23,6 +23,12 @@
 #include <tbb/parallel_reduce.h>
 #endif
 
+#if NWGRAPH_HAVE_HPX
+// #include <hpx/parallel/container_algorithms/transform_reduce.hpp>
+// #include <hpx/parallel/algorithms/transform_reduce.hpp>
+#include <hpx/local/algorithm.hpp>
+#endif
+
 namespace nw {
 namespace graph {
 /// @tparam          Op The type of the operator.
