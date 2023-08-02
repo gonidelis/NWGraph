@@ -33,9 +33,11 @@
 #include "nwgraph/util/timer.hpp"
 #include "nwgraph/util/util.hpp"
 
+#if NWGRAPH_USE_TBB
 #include "tbb/concurrent_vector.h"
 #include "tbb/parallel_for_each.h"
 #include "tbb/queuing_mutex.h"
+#endif
 
 namespace nw {
 namespace graph {

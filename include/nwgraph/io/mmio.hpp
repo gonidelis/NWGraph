@@ -23,17 +23,22 @@
 #include <future>
 #include <iostream>
 #include <sstream>
-#include <sys/mman.h>
+#include "mman.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <thread>
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(_WINDOWS)
 #include <unistd.h>
+#endif
 
 #include "MatrixMarketFile.hpp"
 #include "nwgraph/adjacency.hpp"
 #include "nwgraph/edge_list.hpp"
 
+#if (NWGRAPH_USE_TBB)
 #include <tbb/concurrent_vector.h>
+#endif // (NWGRAPH_USE_TBB)
+
 
 namespace nw {
 namespace graph {

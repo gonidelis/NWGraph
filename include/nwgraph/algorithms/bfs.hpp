@@ -16,6 +16,8 @@
 #ifndef NW_GRAPH_BFS_HPP
 #define NW_GRAPH_BFS_HPP
 
+#include "nwgraph/config.hpp"
+
 #include "nwgraph/containers/compressed.hpp"
 #include "nwgraph/graph_concepts.hpp"
 #include "nwgraph/graph_traits.hpp"
@@ -27,9 +29,11 @@
 #include "nwgraph/adaptors/vertex_range.hpp"
 #include <queue>
 
+#if NWGRAPH_USE_TBB
 #include <tbb/concurrent_queue.h>
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for_each.h>
+#endif
 
 /**
  * @file bfs.hpp
@@ -158,7 +162,8 @@ auto bfs(const Graph& graph, vertex_id_t<Graph> root) {
  * @return The parent list.
  */
 template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
-[[gnu::noinline]] auto bfs(const OutGraph& out_graph, const InGraph& in_graph, vertex_id_t<OutGraph> root, int num_bins = 32, int alpha = 15,
+NWGRAPH_ATTRIBUTE_NOINLINE
+auto bfs(const OutGraph& out_graph, const InGraph& in_graph, vertex_id_t<OutGraph> root, int num_bins = 32, int alpha = 15,
                            int beta = 18) {
 
   using vertex_id_type = vertex_id_t<OutGraph>;

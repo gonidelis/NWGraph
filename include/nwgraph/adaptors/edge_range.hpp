@@ -34,7 +34,7 @@ class edge_range {
   //  static_assert(((Is < Graph::getNAttr()) && ...), "Attribute index out of range");
   static constexpr size_t cutoff_ = 16;
 
-  using vertex_id_type = vertex_id_t<Graph>;
+  using vertex_id_type = std::remove_reference_t<vertex_id_t<Graph>>;
 
   using graph_iterator       = std::conditional_t<std::is_const_v<Graph>, const_iterator_t<const Graph>, iterator_t<Graph>>;
   using graph_inner_iterator = std::conditional_t<std::is_const_v<Graph>, inner_const_iterator_t<Graph>, inner_iterator_t<Graph>>;
@@ -50,12 +50,13 @@ public:
   edge_range(Graph& g, std::index_sequence<Is...> is = {}) : edge_range(g, 0, is) {}
 
   // Split a range.
+#if(NWGRAPH_USE_TBB)
   edge_range(edge_range& b, tbb::split) : edge_range(b) {
     auto i = (outer_end_ - outer_begin_) / 2;
     outer_begin_ += i;
     b.outer_end_ = b.outer_begin_ + i;
   }
-
+#endif
   // Copy constructors and assignment operators are fine.
   edge_range(const edge_range&) = default;
   edge_range& operator=(const edge_range&) = default;
@@ -67,6 +68,7 @@ public:
     using value_type        = std::tuple<
       vertex_id_type, vertex_id_type,
       typename std::tuple_element_t<Is, std::conditional_t<is_const, const attributes_t<Graph>, attributes_t<Graph>>> ...>;
+
     using difference_type = std::ptrdiff_t;
     using reference       = std::tuple<
         vertex_id_type, vertex_id_type,

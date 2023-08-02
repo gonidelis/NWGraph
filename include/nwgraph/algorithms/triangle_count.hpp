@@ -16,6 +16,8 @@
 #ifndef NW_GRAPH_TRIANGLE_COUNT_HPP
 #define NW_GRAPH_TRIANGLE_COUNT_HPP
 
+#include "nwgraph/config.hpp"
+
 #include "nwgraph/graph_concepts.hpp"
 #include "nwgraph/adaptors/cyclic_range_adaptor.hpp"
 #include "nwgraph/adaptors/neighbor_range.hpp"
@@ -70,13 +72,20 @@ size_t triangle_count(const GraphT& A) {
 template <class Op>
 std::size_t triangle_count_async(std::size_t threads, Op&& op) {
   // Launch the workers.
+#if NWGRAPH_USE_HPX
+  std::vector<hpx::future<size_t>> futures(threads);
+  for (std::size_t tid = 0; tid < threads; ++tid) {
+      futures[tid] = hpx::async(hpx::launch::async, op, tid);
+  }
+#else
   std::vector<std::future<size_t>> futures(threads);
   for (std::size_t tid = 0; tid < threads; ++tid) {
     futures[tid] = std::async(std::launch::async, op, tid);
   }
+#endif
 
   // Reduce the outcome.
-  int         i         = 0;
+  //int         i         = 0;
   std::size_t triangles = 0;
   for (auto&& f : futures) {
     triangles += f.get();
@@ -94,7 +103,8 @@ std::size_t triangle_count_async(std::size_t threads, Op&& op) {
  * @return std::size_t number of triangles
  */
 template <adjacency_list_graph Graph>
-[[gnu::noinline]] std::size_t triangle_count(const Graph& G, std::size_t threads) {
+NWGRAPH_ATTRIBUTE_NOINLINE
+std::size_t triangle_count(const Graph& G, std::size_t threads) {
   auto first = G.begin();
   auto last = G.end();
   return triangle_count_async(threads, [&](std::size_t tid) {

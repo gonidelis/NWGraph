@@ -18,11 +18,26 @@
 #include <cstring>
 #include <fcntl.h>
 #include <filesystem>
-#include <sys/mman.h>
+#include <nwgraph/io/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #include <tuple>
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(_WINDOWS)
 #include <unistd.h>
+#else
+#include <io.h>
+#include <windows.h>
+#include <stdio.h>
+#include <tchar.h>
+#include <cwchar>
+#include <comdef.h> 
+#endif
+#include <stdio.h>
+
+typedef char char_t; 
+#define CHAR_WIDE
+
 
 extern "C" {
 #include "mmio_nist.h"
@@ -53,13 +68,13 @@ class MatrixMarketFile final {
   MM_typecode type_;
 
 public:
-  explicit MatrixMarketFile(std::filesystem::path path) : fd_(open(path.c_str(), O_RDONLY)) {
+    explicit MatrixMarketFile(std::filesystem::path path) : fd_(_open(_bstr_t(path.c_str()), _O_RDONLY)) {
     if (fd_ < 0) {
       fprintf(stderr, "open failed, %d: %s\n", errno, strerror(errno));
       std::terminate();
     }
 
-    FILE* f = fdopen(fd_, "r");
+    FILE* f = _fdopen(fd_, "r");
     if (f == nullptr) {
       fprintf(stderr, "fdopen failed, %d: %s\n", errno, strerror(errno));
       goto error;
@@ -94,7 +109,7 @@ public:
     return;
 
   error:
-    close(fd_);
+    _close(fd_);
     std::terminate();
   };
 
@@ -107,7 +122,7 @@ public:
     }
     base_ = nullptr;
 
-    if (fd_ != -1 && close(fd_)) {
+    if (fd_ != -1 && _close(fd_)) {
       fprintf(stderr, "close(fd) failed, %d: %s\n", errno, strerror(errno));
     }
     fd_ = -1;
