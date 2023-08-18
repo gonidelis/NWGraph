@@ -23,11 +23,11 @@
 #include <future>
 #include <iostream>
 #include <sstream>
-#include <sys/mman.h>
+//#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <thread>
-#include <unistd.h>
+//#include <unistd.h>
 
 #include "MatrixMarketFile.hpp"
 #include "nwgraph/adjacency.hpp"
@@ -215,64 +215,65 @@ edge_list<sym, Attributes...> read_mm(const std::string& filename) {
 
   return A;
 }
+// TOFIX: Unused fttb, but will need modification to work on MSVC
 
-template <directedness sym, typename... Attributes, edge_list_graph edge_list_t>
-edge_list_t read_mm(const std::string& filename) {
-  std::ifstream            inputStream(filename);
-  std::string              string_input;
-  bool                     file_symmetry = false;
-  std::vector<std::string> header(5);
-
-  // %%MatrixMarket matrix coordinate integer symmetric
-  std::getline(inputStream, string_input);
-  std::stringstream h(string_input);
-  for (auto& s : header)
-    h >> s;
-
-  if (header[0] != "%%MatrixMarket") {
-    std::cerr << "Unsupported format" << std::endl;
-    throw;
-  }
-  if (header[4] == "symmetric") {
-    file_symmetry = true;
-  } else if (header[4] == "general") {
-    file_symmetry = false;
-  } else {
-    std::cerr << "Bad format (symmetry): " << header[4] << std::endl;
-    throw;
-  }
-
-  while (std::getline(inputStream, string_input)) {
-    if (string_input[0] != '%') break;
-  }
-  size_t n0, n1, nNonzeros;
-  std::stringstream(string_input) >> n0 >> n1 >> nNonzeros;
-
-  if (n0 == n1 && is_unipartite<edge_list_t>::value) {
-    //unipartite edge list
-    //edge_list<sym, Attributes...> A(n0);
-    //mm_fill(inputStream, A, nNonzeros, file_symmetry, (header[3] == "pattern"));
-
-    //return A;
-    std::cerr << "Can not populate unipartite graph with symmetric matrix" << std::endl;
-    throw;
-  }
-  else if (n0 != n1 && false == is_unipartite<edge_list_t>::value){
-    //bipartite edge list
-    if (file_symmetry) {
-      std::cerr << "Can not populate bipartite graph with symmetric matrix" << std::endl;
-      throw;
-    }
-    bi_edge_list<sym, Attributes...> A(n0, n1);
-    mm_fill(inputStream, A, nNonzeros, file_symmetry, (header[3] == "pattern"));
-
-    return A;
-  }
-  else {
-    std::cerr << "Mismatch edge list type with matrix symmetry" << std::endl;
-    throw;    
-  }
-}
+//template <directedness sym, typename... Attributes, edge_list_graph edge_list_t>
+//edge_list_t read_mm(const std::string& filename) {
+//  std::ifstream            inputStream(filename);
+//  std::string              string_input;
+//  bool                     file_symmetry = false;
+//  std::vector<std::string> header(5);
+//
+//  // %%MatrixMarket matrix coordinate integer symmetric
+//  std::getline(inputStream, string_input);
+//  std::stringstream h(string_input);
+//  for (auto& s : header)
+//    h >> s;
+//
+//  if (header[0] != "%%MatrixMarket") {
+//    std::cerr << "Unsupported format" << std::endl;
+//    throw;
+//  }
+//  if (header[4] == "symmetric") {
+//    file_symmetry = true;
+//  } else if (header[4] == "general") {
+//    file_symmetry = false;
+//  } else {
+//    std::cerr << "Bad format (symmetry): " << header[4] << std::endl;
+//    throw;
+//  }
+//
+//  while (std::getline(inputStream, string_input)) {
+//    if (string_input[0] != '%') break;
+//  }
+//  size_t n0, n1, nNonzeros;
+//  std::stringstream(string_input) >> n0 >> n1 >> nNonzeros;
+//
+//  if (n0 == n1 && is_unipartite<edge_list_t>::value) {
+//    //unipartite edge list
+//    //edge_list<sym, Attributes...> A(n0);
+//    //mm_fill(inputStream, A, nNonzeros, file_symmetry, (header[3] == "pattern"));
+//
+//    //return A;
+//    std::cerr << "Can not populate unipartite graph with symmetric matrix" << std::endl;
+//    throw;
+//  }
+//  else if (n0 != n1 && false == is_unipartite<edge_list_t>::value){
+//    //bipartite edge list
+//    if (file_symmetry) {
+//      std::cerr << "Can not populate bipartite graph with symmetric matrix" << std::endl;
+//      throw;
+//    }
+//    bi_edge_list<sym, Attributes...> A(n0, n1);
+//    mm_fill(inputStream, A, nNonzeros, file_symmetry, (header[3] == "pattern"));
+//
+//    return A;
+//  }
+//  else {
+//    std::cerr << "Mismatch edge list type with matrix symmetry" << std::endl;
+//    throw;    
+//  }
+//}
 
 template <typename T>
 auto read_mm_vector(std::istream& inputStream) {

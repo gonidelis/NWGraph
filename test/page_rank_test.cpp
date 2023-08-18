@@ -30,6 +30,10 @@
 #include "nwgraph/util/timer.hpp"
 #include "nwgraph/util/util.hpp"
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
 #include "common/abstract_test.hpp"
 
 using namespace nw::graph;
@@ -84,7 +88,11 @@ TEST_CASE("PageRank") {
       life_timer _("degrees");
       tbb::parallel_for(edge_range(graph), [&](auto&& edges) {
         for (auto&& [i, j] : edges) {
+#if defined(_MSC_VER)
+          _InterlockedIncrement(&degrees[j]);
+#else
           __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
+#endif
         }
       });
     }
@@ -111,7 +119,11 @@ TEST_CASE("PageRank") {
       life_timer _("degrees");
       tbb::parallel_for(edge_range(graph), [&](auto&& edges) {
         for (auto&& [i, j] : edges) {
+#if defined(_MSC_VER)
+          _InterlockedIncrement(&degrees[j]);
+#else
           __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
+#endif
         }
       });
     }

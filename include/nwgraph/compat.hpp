@@ -14,7 +14,12 @@
 #ifndef NWGRAPH_COMPAT_HPP
 #define NWGRAPH_COMPAT_HPP
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma message ("compat.hpp is deprecated")
+#else
 #warning "compat.hpp is deprecated"
+#endif
+
 
 #if 0
 

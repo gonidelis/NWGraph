@@ -18,11 +18,18 @@
 #include <cstring>
 #include <fcntl.h>
 #include <filesystem>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <tuple>
+
+// PS: Caution, MSVC implementation is completely untested!
+#if defined(_MSC_VER)
+#include <Windows.h>
+#include <io.h>
+#else
+#include <sys/mman.h>
 #include <unistd.h>
+#endif
 
 extern "C" {
 #include "mmio_nist.h"
@@ -53,11 +60,15 @@ class MatrixMarketFile final {
   MM_typecode type_;
 
 public:
-  explicit MatrixMarketFile(std::filesystem::path path) : fd_(open(path.c_str(), O_RDONLY)) {
+  explicit MatrixMarketFile(std::filesystem::path path) : fd_(open((char *)path.c_str(), O_RDONLY)) {
     if (fd_ < 0) {
       fprintf(stderr, "open failed, %d: %s\n", errno, strerror(errno));
       std::terminate();
     }
+#if defined(_MSC_VER)
+    HANDLE hFile = CreateFile((const char*)path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hMapFile = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, e_, NULL);
+#endif
 
     FILE* f = fdopen(fd_, "r");
     if (f == nullptr) {
@@ -85,11 +96,19 @@ public:
     fseek(f, 0L, SEEK_END);
     e_ = ftell(f);
 
+#if defined(_MSC_VER)
+    if (hMapFile == NULL) {
+      fprintf(stderr, "CreateFileMapping failed, %lu\n", GetLastError());
+      goto error;
+    }
+    base_ = static_cast<char*>(MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, e_));
+#else
     base_ = static_cast<char*>(mmap(nullptr, e_, PROT_READ, MAP_PRIVATE, fd_, 0));
     if (base_ == MAP_FAILED) {
       fprintf(stderr, "mmap failed, %d: %s\n", errno, strerror(errno));
       goto error;
     }
+#endif
 
     return;
 
@@ -102,10 +121,16 @@ public:
 
   /// Release the memory mapping and file descriptor early.
   void release() {
+#if defined(_MSC_VER)
+  if ((base_) && !UnmapViewOfFile(base_)) {
+    fprintf(stderr, "UnmapViewOfFile failed, %lu\n", GetLastError());
+  }
+#else
     if (base_ && munmap(base_, e_)) {
       fprintf(stderr, "munmap failed, %d: %s\n", errno, strerror(errno));
     }
     base_ = nullptr;
+#endif
 
     if (fd_ != -1 && close(fd_)) {
       fprintf(stderr, "close(fd) failed, %d: %s\n", errno, strerror(errno));

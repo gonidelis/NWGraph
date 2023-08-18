@@ -81,7 +81,8 @@ concept tag_invocable = (sizeof(_tag_invoke::try_tag_invoke<CPO, Args...>(0)) ==
 
 #define DECL_TAG_INVOKE(str)                                                                                                  \
   struct str##_tag final {                                                                                                    \
-    inline constexpr auto operator()(auto&&... args) const noexcept(is_nothrow_tag_invocable_v<str##_tag, decltype(args)...>) \
+    template<typename... Args>                                                                                                \
+    inline constexpr auto operator()(Args&&... args) const noexcept(is_nothrow_tag_invocable_v<str##_tag, decltype(args)...>) \
         -> tag_invoke_result_t<str##_tag, decltype(args)...> {                                                                \
       return tag_invoke(*this, std::forward<decltype(args)>(args)...);                                                        \
     }                                                                                                                         \

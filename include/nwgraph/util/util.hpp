@@ -27,6 +27,30 @@
 
 #include "nwgraph/util/traits.hpp"
 
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <cstdint>
+#include <intrin.h>
+
+std::uint32_t inline __clz(std::uint32_t value){
+    return __lzcnt(value);
+}
+
+std::uint64_t inline __clzl(std::uint64_t value){
+    return __lzcnt64(value);
+}
+#define NWGRAPH_BUILTIN_CONSTEXPR
+#else
+std::uint32_t inline constexpr __clz(std::uint32_t value){
+    return __builtin_clz(value);
+}
+
+std::uint64_t inline constexpr __clzc(std::uint64_t value){
+    return __builtin_clzl(value);
+}
+#define NWGRAPH_BUILTIN_CONSTEXPR constexpr
+#endif
+
 namespace nw {
 namespace graph {
 
@@ -206,31 +230,31 @@ auto property_ptr(Iterator& inner) {
 
 /// The log_2 of an integer is the inverse of pow2... essentially the number of
 /// left shift bits we need to shift out of the value to get to 0.
-static inline constexpr int log2(uint64_t val) {
+static inline NWGRAPH_BUILTIN_CONSTEXPR int log2(uint64_t val) {
   assert(val);
-  return ((sizeof(val) * 8 - 1) - __builtin_clzl(val));
+  return ((sizeof(val) * 8 - 1) - __clzl(val));
 }
 
 /// http://stackoverflow.com/questions/3272424/compute-fast-log-base-2-ceiling
-static inline constexpr int ceil_log2(uint32_t val) {
+static inline NWGRAPH_BUILTIN_CONSTEXPR int ceil_log2(uint32_t val) {
   assert(val);
-  return ((sizeof(val) * 8 - 1) - __builtin_clz(val)) + (!!(val & (val - 1)));
+  return ((sizeof(val) * 8 - 1) - __clz(val)) + (!!(val & (val - 1)));
 }
 
-static inline constexpr int ceil_log2(int32_t val) {
+static inline NWGRAPH_BUILTIN_CONSTEXPR int ceil_log2(int32_t val) {
   assert(0 < val);
   return ceil_log2(uint32_t(val));
 }
 
 /// http://stackoverflow.com/questions/3272424/compute-fast-log-base-2-ceiling
-static inline constexpr int ceil_log2(uint64_t val) {
+static inline NWGRAPH_BUILTIN_CONSTEXPR int ceil_log2(uint64_t val) {
   assert(val);
-  return ((sizeof(val) * 8 - 1) - __builtin_clzl(val)) + (!!(val & (val - 1)));
+  return ((sizeof(val) * 8 - 1) - __clzl(val)) + (!!(val & (val - 1)));
 }
 
 /// Raise 2^exp, when exp is an integer.
 template <class T = uint64_t>
-static constexpr T pow2(int exp) {
+static NWGRAPH_BUILTIN_CONSTEXPR T pow2(int exp) {
   static_assert(std::is_integral_v<T>, "pow2 only returns integer types");
   assert(0 <= exp and exp < (int)(8 * sizeof(T) - 1));
   return (T(1) << exp);

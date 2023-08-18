@@ -242,7 +242,7 @@ template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::executio
   std::atomic<std::size_t> total_triangles = 0;
   std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
     std::size_t triangles = 0;
-    for (auto &&i = x.begin(), e = x.end(); i != e; ++i) {
+    for (auto i = x.begin(), e = x.end(); i != e; ++i) {
       triangles += nw::graph::intersection_size(i, e, A[std::get<0>(*i)], inner);
     }
     total_triangles += triangles;
@@ -308,7 +308,7 @@ template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution:
       nw::graph::cyclic(graph, stride),
       [&](auto&& i) {
         std::size_t triangles = 0;
-        for (auto &&j = i.begin(), e = i.end(); j != e; ++j) {
+        for (auto j = i.begin(), e = i.end(); j != e; ++j) {
           triangles += nw::graph::intersection_size(j, e, graph[std::get<0>(*j)], set);
         }
         return triangles;

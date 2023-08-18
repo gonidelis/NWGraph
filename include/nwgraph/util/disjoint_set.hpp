@@ -21,7 +21,7 @@
 #include <map>
 #include <set>
 #include <stack>
-#include <string.h>
+#include <string>
 #include <vector>
 
 #if defined(CL_SYCL_LANGUAGE_VERSION)

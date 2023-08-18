@@ -27,6 +27,7 @@
 
 #include "nwgraph/adaptors/bfs_edge_range.hpp"
 #include "nwgraph/graph_concepts.hpp"
+#include "nwgraph/adjacency.hpp"
 
 namespace nw {
 namespace graph {

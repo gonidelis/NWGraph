@@ -26,6 +26,10 @@
 #include <random>
 #include <unordered_map>
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <winnt.h>
+#endif
+
 #if defined(CL_SYCL_LANGUAGE_VERSION)
 #include <dpstd/algorithm>
 #include <dpstd/execution>
@@ -49,7 +53,12 @@ inline bool writeMin(T& old, T& next) {
 
 template <typename T>
 inline bool compare_and_swap(T& x, T old_val, T new_val) {
+#if defined(_MSC_VER) && !defined(__clang__)
+  return _InterlockedCompareExchange((long*)(&x), (long)(new_val),
+        (long)(old_val)) == (long)(old_val);
+#else
   return __sync_bool_compare_and_swap(&x, *(&old_val), *(&new_val));
+#endif
 }
 template <typename T>
 struct atomwrapper {
