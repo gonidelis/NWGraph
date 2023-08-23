@@ -38,14 +38,14 @@ public:
   neighbor_range(Graph& g, std::size_t offset) : outer_base_(g.begin()), outer_begin_(g.begin() + offset), outer_end_(g.end()) {}
 
   neighbor_range(Graph& g) : neighbor_range(g, 0) {}
-
+#if NWGRAPH_HAVE_TBB
   // Split a range.
   neighbor_range(neighbor_range& b, tbb::split) : neighbor_range(b) {
     auto i = (outer_end_ - outer_begin_) / 2;
     outer_begin_ += i;
     b.outer_end_ = b.outer_begin_ + i;
   }
-
+#endif
   neighbor_range(const neighbor_range&) = default;
   neighbor_range& operator=(const neighbor_range&) = default;
 

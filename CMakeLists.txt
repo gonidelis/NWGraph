@@ -118,25 +118,47 @@ endif()
 
 option(TBBMALLOC_BUILD "Enable tbbmalloc build" OFF)
 
+option(NWGRAPH_USE_TBB "Use TBB for parallelization" OFF)
+option(NWGRAPH_USE_HPX "Use HPX for parallelization" ON)
+if(NWGRAPH_USE_TBB AND NWGRAPH_USE_HPX)
+  message(FATAL "Can only enable one, TBB or HPX as parallelization backend")
+endif()
+
 if(NWGRAPH_FETCH_TBB)
 
-# include(FetchContent)
+  # include(FetchContent)
 
-# Use fetch content rather than as a submodule
-include(FetchContent)
-FetchContent_Declare(
-  oneTBB
-  GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
-#  GIT_TAG v2021.5.0
-)
-message(STATUS "Fetching TBB")
+  if (NWGRAPH_USE_TBB)
+    # Use fetch content rather than as a submodule
+    include(FetchContent)
+    FetchContent_Declare(
+      oneTBB
+      GIT_REPOSITORY https://github.com/oneapi-src/oneTBB.git
+    #  GIT_TAG v2021.5.0
+    )
+    message(STATUS "Fetching TBB")
 
-FetchContent_MakeAvailable(oneTBB)
+    FetchContent_MakeAvailable(oneTBB)
+  elseif (NWGRAPH_USE_HPX)
+    FetchContent_Declare(
+      HPX
+      GIT_REPOSITORY https://github.com/STEllAR-GROUP/hpx.git
+      #  GIT_TAG 1.8.1
+    )
+    message(STATUS "Fetching HPX")
+  
+    FetchContent_MakeAvailable(HPX)
+  endif()
 
 else()
 
-# add_subdirectory(external/oneTBB)
-find_package(TBB REQUIRED)
+  # add_subdirectory(external/oneTBB)
+  if (NWGRAPH_USE_TBB)
+    # find_package(TBB REQUIRED)
+  elseif (NWGRAPH_USE_HPX)
+    find_package(HPX REQUIRED)
+    find_package(Threads REQUIRED)
+  endif()
 
 endif()
 
@@ -145,17 +167,23 @@ endif()
 # find_package(TBB)
 # if (not TBB_Found)
 #   FetchContent(
-#     TBB_STUFF)
-# endif()
+  #     TBB_STUFF)
+  # endif()
 
-find_package(Threads REQUIRED)
+if(NWGRAPH_USE_TBB)
+  find_package(Threads REQUIRED)
 
-add_library(nwgraph_tbb INTERFACE)
-target_compile_definitions(nwgraph_tbb INTERFACE EXECUTION_POLICY)
-target_link_libraries(nwgraph_tbb INTERFACE TBB::tbb Threads::Threads)
-if (NWGRAPH_USE_TBBMALLOC)
-  target_link_libraries(nwgraph_tbb INTERFACE TBB::tbbmalloc) 
-endif ()
+  add_library(nwgraph_tbb INTERFACE)
+  target_compile_definitions(nwgraph_tbb INTERFACE EXECUTION_POLICY NWGRAPH_HAVE_TBB)
+  target_link_libraries(nwgraph_tbb INTERFACE TBB::tbb Threads::Threads)
+  if (NWGRAPH_USE_TBBMALLOC)
+    target_link_libraries(nwgraph_tbb INTERFACE TBB::tbbmalloc) 
+  endif ()
+elseif(NWGRAPH_USE_HPX)  
+  add_library(nwgraph_hpx INTERFACE)
+  target_compile_definitions(nwgraph_hpx INTERFACE EXECUTION_POLICY NWGRAPH_HAVE_HPX)
+  target_link_libraries(nwgraph_hpx INTERFACE HPX::hpx)
+endif()
 
 include(Docopt)
 

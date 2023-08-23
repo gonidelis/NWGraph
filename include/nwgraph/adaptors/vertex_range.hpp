@@ -11,7 +11,9 @@
  *
  */
 
+#if NWGRAPH_HAVE_TBB
 #include <oneapi/tbb.h>
+#endif
 #include "nwgraph/graph_traits.hpp"
 
 #ifndef NW_GRAPH_counting_iterator_HPP

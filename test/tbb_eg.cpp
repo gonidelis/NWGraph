@@ -15,7 +15,9 @@
 
 
 #include <iostream>
+#if NWGRAPH_HAVE_TBB
 #include <tbb/parallel_for.h>
+#endif
 #include <tuple>
 
 #if defined(CL_SYCL_LANGUAGE_VERSioN)

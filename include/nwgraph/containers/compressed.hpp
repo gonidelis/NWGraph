@@ -47,6 +47,11 @@
 #include "nwgraph/util/defaults.hpp"
 #include "nwgraph/util/demangle.hpp"
 
+#if NWGRAPH_HAVE_HPX
+#include <hpx/parallel/algorithms/for_loop.hpp>
+// #include <hpx/algorithm.hpp>
+#endif
+
 namespace nw {
 namespace graph {
 
@@ -399,11 +404,19 @@ public:    // fixme
   template <class ExecutionPolicy = std::execution::parallel_unsequenced_policy>
   std::vector<index_t> degrees(ExecutionPolicy&& ex_policy = {}) const {
     std::vector<index_t> degs(indices_.size() - 1);
+#if NWGRAPH_HAVE_TBB
     tbb::parallel_for(tbb::blocked_range(0ul, indices_.size() - 1), [&](auto&& r) {
       for (auto i = r.begin(), e = r.end(); i != e; ++i) {
         degs[i] = indices_[i + 1] - indices_[i];
       }
     });
+#elif NWGRAPH_HAVE_HPX
+    hpx::for_loop(hpx::execution::par, 0ul, indices_.size() - 1, [&](auto&& r) {
+      for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+          degs[i] = indices_[i + 1] - indices_[i];
+      }
+    });
+#endif
     if (g_debug_compressed) {
       for (size_t i = 0, e = indices_.size() - 1; i < e; ++i) 
         assert(degs[i] == indices_[i + 1] - indices_[i]);
@@ -434,11 +447,19 @@ public:    // fixme
   template <class ExecutionPolicy = std::execution::parallel_unsequenced_policy>
   void relabel_to_be_indexed(const std::vector<index_t>& new_id_perm, ExecutionPolicy&& ex_policy = {}) {
     auto s = std::get<0>(to_be_indexed_).begin();
+#if NWGRAPH_HAVE_TBB
     tbb::parallel_for(tbb::blocked_range(0ul, std::get<0>(to_be_indexed_).size()), [&](auto&& r) {
       for (auto i = r.begin(), e = r.end(); i != e; ++i) {
           s[i] = new_id_perm[s[i]];
       }
     });
+#elif NWGRAPH_HAVE_HPX
+    hpx::for_loop(hpx::execution::par, 0ul, std::get<0>(to_be_indexed_).size(), [&](auto&& r) {
+        for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+            s[i] = new_id_perm[s[i]];
+        }
+    });
+#endif
     sort_to_be_indexed(ex_policy);
   }
   
@@ -453,12 +474,19 @@ public:    // fixme
     std::vector              degs = degrees<ExecutionPolicy>(ex_policy);
     //2. populate permutation with vertex id
     std::vector<index_t> perm(n);
+#if NWGRAPH_HAVE_TBB
     tbb::parallel_for(tbb::blocked_range(0ul, n), [&](auto&& r) {
       for (auto i = r.begin(), e = r.end(); i != e; ++i) {
         perm[i] = i;
       }
     });
-
+#elif NWGRAPH_HAVE_HPX
+    hpx::for_loop(hpx::execution::par, 0ul, n, [&](auto&& r) {
+        for (auto i = r.begin(), e = r.end(); i != e; ++i) {
+            perm[i] = i;
+        }
+    });
+#endif
     //3. do a proxy sort on the permutation based on the degree of each vertex
     // in descending or ascending order
     // this will permutate the vertex id in perm based on the degrees
@@ -479,6 +507,7 @@ public:    // fixme
 
     //5. permutate the old indices based on the degree of the new_id 
     // to get the new_id_perm
+#if NWGRAPH_HAVE_TBB
     tbb::parallel_for(tbb::blocked_range(0ul, n), [&](auto&& r) {
       for (auto old_id = r.begin(), e = r.end(); old_id != e; ++old_id) {
         auto new_id         = perm[old_id];
@@ -486,7 +515,15 @@ public:    // fixme
         new_id_perm[new_id] = old_id;
       }
     });
-    
+#elif NWGRAPH_HAVE_HPX
+    hpx::for_loop(hpx::execution::par, 0ul, n, [&](auto&& r) {
+      for (auto old_id = r.begin(), e = r.end(); old_id != e; ++old_id) {
+          auto new_id = perm[old_id];
+          new_tmp[old_id] = degs[new_id];
+          new_id_perm[new_id] = old_id;
+      }
+    });
+#endif
     //6. Computes an inclusive prefix sum operation for the new_indices
     // before the computation, new_indices stores the degree of each vertex (with new id)
     std::inclusive_scan(ex_policy, new_indices.begin(), new_indices.end(), new_indices.begin());

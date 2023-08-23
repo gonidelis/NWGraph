@@ -37,6 +37,14 @@ static constexpr const char USAGE[] =
       -V, --verbose         run in verbose mode
 )";
 
+#include <hpx/hpx_main.hpp>
+#if NWGRAPH_HAVE_HPX
+#endif
+
+#if NWGRAPH_HAVE_HPX
+#include <hpx/hpx_main.hpp>
+#endif
+
 #include "nwgraph/adjacency.hpp"
 #include "nwgraph/edge_list.hpp"
 #include "nwgraph/volos.hpp"
@@ -281,26 +289,26 @@ void run_bench(int argc, char* argv[]) {
                 return triangle_count_v3(cel_a);
               case 4:
                 return triangle_count(cel_a, thread);
-              case 5:
-                return triangle_count_v5(cel_a.begin(), cel_a.end(), thread);
-              case 6:
-                return triangle_count_v6(cel_a.begin(), cel_a.end(), thread);
-              case 7:
-                return triangle_count_v7(cel_a);
-              case 8:
-                return triangle_count_v7(cel_a, std::execution::seq, std::execution::par_unseq);
-              case 9:
-                return triangle_count_v7(cel_a, std::execution::par_unseq, std::execution::par_unseq);
-              case 10:
-                return triangle_count_v10(cel_a);
-              case 11:
-                return triangle_count_v10(cel_a, std::execution::par_unseq, std::execution::par_unseq, std::execution::par_unseq);
-              case 12:
-                return triangle_count_v12(cel_a, thread);
-              case 13:
-                return triangle_count_v13(cel_a, thread);
-              case 14:
-                return triangle_count_v14(cel_a);
+              // case 5:
+              //   return triangle_count_v5(cel_a.begin(), cel_a.end(), thread);
+              // case 6:
+              //   return triangle_count_v6(cel_a.begin(), cel_a.end(), thread);
+              // case 7:
+              //   return triangle_count_v7(cel_a);
+              // case 8:
+              //   return triangle_count_v7(cel_a, std::execution::seq, std::execution::par_unseq);
+              // case 9:
+              //   return triangle_count_v7(cel_a, std::execution::par_unseq, std::execution::par_unseq);
+              // case 10:
+              //   return triangle_count_v10(cel_a);
+              // case 11:
+              //   return triangle_count_v10(cel_a, std::execution::par_unseq, std::execution::par_unseq, std::execution::par_unseq);
+              // case 12:
+              //   return triangle_count_v12(cel_a, thread);
+              // case 13:
+              //   return triangle_count_v13(cel_a, thread);
+              // case 14:
+              //   return triangle_count_v14(cel_a);
 #if 0
 	    case 15:
 	      return triangle_count_edgesplit(cel_a, thread);
@@ -325,7 +333,7 @@ void run_bench(int argc, char* argv[]) {
                             {"elapsed", time},
                             {"elapsed+relabel", time + relabel_time},
                             {"triangles", triangles}};
-
+                            
           if (verify && triangles != v_triangles) {
             std::cerr << "Inconsistent results: v" << id << " failed verification for " << file << " using " << thread << " threads (reported "
                       << triangles << ")\n";
