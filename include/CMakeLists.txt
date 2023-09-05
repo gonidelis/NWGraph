@@ -30,7 +30,7 @@ target_link_libraries(nwgraph INTERFACE nwgraph_tbb)
 #   endif ()
 elseif(NWGRAPH_USE_HPX)
   find_package(HPX REQUIRED)
-  target_compile_definitions(nwgraph INTERFACE NWGRAPH_USE_HPX)
+  target_compile_definitions(nwgraph INTERFACE NWGRAPH_HAVE_HPX)
   target_link_libraries(nwgraph INTERFACE HPX::hpx HPX::wrap_main)
 endif()
 
