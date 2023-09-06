@@ -30,34 +30,45 @@
 #include <map>
 #include <random>
 #include <string>
+#if NWGRAPH_HAVE_TBB
 #include <tbb/global_control.h>
+#endif
+#if NWGRAPH_HAVE_HPX
+#include <hpx/parallel/container_algorithms/for_each.hpp>
+#include <hpx/parallel/container_algorithms/transform_reduce.hpp>
+#endif
+
 #include <tuple>
 #include <vector>
 
 namespace nw::graph {
 namespace bench {
 
-constexpr inline bool WITH_TBB = true;
 
 auto set_n_threads(long n) {
-  if constexpr (WITH_TBB) {
+
+#if NWGRAPH_HAVE_TBB
     return tbb::global_control(tbb::global_control::max_allowed_parallelism, n);
-  } else {
+#elif NWGRAPH_HAVE_HPX
+    return hpx::get_num_worker_threads();
+#else
     return 0;
-  }
+#endif
 }
 
 long get_n_threads() {
-  if constexpr (WITH_TBB) {
+#if NWGRAPH_HAVE_TBB
     return tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism);
-  } else {
+#elif NWGRAPH_HAVE_HPX
+    return hpx::get_worker_thread_num();
+#else
     return 1;
-  }
+#endif
 }
 
 std::vector<long> parse_n_threads(const std::vector<std::string>& args) {
   std::vector<long> threads;
-  if constexpr (WITH_TBB) {
+#if NWGRAPH_HAVE_TBB
     if (args.size() == 0) {
       threads.push_back(tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism));
     } else {
@@ -65,9 +76,24 @@ std::vector<long> parse_n_threads(const std::vector<std::string>& args) {
         threads.push_back(std::stol(n));
       }
     }
-  } else {
+#elif NWGRAPH_HAVE_HPX
+    // if (args.size() == 0) {
+    //   threads.push_back(hpx::get_num_worker_threads());
+    // } 
+    // else 
+    // {
+    //   for (auto&& n : args) {
+        // This breaks the functionality that allows
+        // one benchmark to run multiple times with a
+        // vector of number of threads.
+
+        // threads.push_back(std::stol(n));
+        threads.push_back(hpx::get_num_worker_threads());
+      // }
+    // }
+#else
     threads.push_back(1);
-  }
+#endif
   return threads;
 }
 
@@ -111,11 +137,19 @@ auto build_degrees(const Graph& graph) {
   using Id = typename nw::graph::vertex_id_t<std::decay_t<Graph>>;
   nw::util::life_timer _("degrees");
   std::vector<Id>      degrees(graph.size());
+#if NWGRAPH_HAVE_TBB
   tbb::parallel_for(edge_range(graph), [&](auto&& edges) {
     for (auto&& [i, j] : edges) {
       __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
     }
   });
+#elif NWGRAPH_HAVE_HPX
+  hpx::ranges::for_each(hpx::execution::par, edge_range(graph), [&](auto&& edges){
+    for (auto&& [i,j] : edges){
+      __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
+    }
+  });
+#endif
   return degrees;
 }
 

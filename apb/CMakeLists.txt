@@ -8,8 +8,10 @@ target_link_Libraries(spmv.exe nwgraph)
 add_executable(exec.exe exec.cpp)
 target_link_Libraries(exec.exe nwgraph)
 
-add_executable(tbb.exe tbb.cpp)
-target_link_Libraries(tbb.exe nwgraph)
+if(NWGRAPH_USE_TBB)
+    add_executable(tbb.exe tbb.cpp)
+    target_link_Libraries(tbb.exe nwgraph)
+endif()
 
 add_executable(bfs_apb.exe bfs.cpp)
 target_link_Libraries(bfs_apb.exe nwgraph)

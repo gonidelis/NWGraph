@@ -90,5 +90,5 @@ target_link_libraries(sssp.exe bench_lib)
 add_dependencies(bench sssp.exe)
 
 add_executable(tc.exe tc.cpp)
-target_link_libraries(tc.exe bench_lib nlohmann_json::nlohmann_json)
+target_link_libraries(tc.exe bench_lib nlohmann_json::nlohmann_json nwgraph_hpx)
 add_dependencies(bench tc.exe)

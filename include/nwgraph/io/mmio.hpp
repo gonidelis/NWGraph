@@ -33,7 +33,9 @@
 #include "nwgraph/adjacency.hpp"
 #include "nwgraph/edge_list.hpp"
 
+#if NWGRAPH_HAVE_TBB
 #include <tbb/concurrent_vector.h>
+#endif
 
 namespace nw {
 namespace graph {

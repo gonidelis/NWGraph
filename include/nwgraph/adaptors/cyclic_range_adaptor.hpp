@@ -46,10 +46,10 @@ public:
 
   cyclic_range_adaptor(const cyclic_range_adaptor&) = default;
   cyclic_range_adaptor(cyclic_range_adaptor&&)      = default;
-
+#if NWGRAPH_HAVE_TBB
   cyclic_range_adaptor(cyclic_range_adaptor& rhs, tbb::split)
       : begin_(rhs.begin_), end_(rhs.end_), cutoff_(rhs.cutoff_), cycle_(rhs.cycle_ + rhs.stride_), stride_(rhs.stride_ *= 2) {}
-
+#endif
   struct iterator {
     Iterator        i_;
     difference_type stride_;

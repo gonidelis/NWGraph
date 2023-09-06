@@ -26,7 +26,9 @@
 #include <dpstd/numeric>
 #else
 #include <execution>
+#if NWGRAPH_HAVE_TBB
 #include <tbb/parallel_sort.h>
+#endif
 #endif
 
 #include "nwgraph/util/defaults.hpp"

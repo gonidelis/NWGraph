@@ -27,9 +27,11 @@
 #include "nwgraph/adaptors/vertex_range.hpp"
 #include <queue>
 
+#if NWGRAPH_HAVE_TBB
 #include <tbb/concurrent_queue.h>
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for_each.h>
+#endif
 
 /**
  * @file bfs.hpp
