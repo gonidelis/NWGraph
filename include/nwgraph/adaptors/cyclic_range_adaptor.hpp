@@ -53,15 +53,64 @@ public:
   struct iterator {
     Iterator        i_;
     difference_type stride_;
+    using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
+    using value_type = std::iterator_traits<Iterator>::value_type;
+    using difference_type = std::iterator_traits<Iterator>::difference_type;
+    using pointer = std::iterator_traits<Iterator>::pointer;
+    using reference = std::iterator_traits<Iterator>::reference;
 
     decltype(auto) operator*() { return *i_; }
     
-    iterator& operator++() {
-      i_ += stride_;
-      return *this;
-    }
 
-    bool operator!=(const iterator& rhs) const { return i_ != rhs.i_; }
+
+   //Increment / Decrement
+   iterator& operator++() 
+   {  i_ += stride_; return *this;  }
+
+   iterator operator++(int)
+   {  iterator tmp(*this); ++*this; return tmp;  }
+  
+   iterator& operator--()
+   {  --i_; return *this;  }
+
+   iterator operator--(int)
+   {  iterator tmp(*this); --*this; return tmp;  }
+
+   // Arithmetic
+   iterator& operator+=(difference_type off)
+   {  i_ += off;  return *this;  }
+
+   iterator operator+(difference_type off) const
+   {  return iterator(i_+off);  }
+
+   iterator& operator-=(difference_type off)
+   {  i_ -= off; return *this;   }
+
+   iterator operator-(difference_type off) const
+   {  return iterator(i_-off);  }
+
+   difference_type operator-(const iterator& right) const
+   {  return this->i_ - right.i_;   }
+
+     //Comparison operators
+   bool operator==   (const iterator& r)  const
+   {  return i_ == r.i_;  }
+
+   bool operator!=   (const iterator& r)  const
+   {  return i_ != r.i_;  }
+
+   bool operator<    (const iterator& r)  const
+   {  return i_ < r.i_;  }
+
+   bool operator<=   (const iterator& r)  const
+   {  return i_ <= r.i_;  }
+
+   bool operator>    (const iterator& r)  const
+   {  return i_ > r.i_;  }
+
+   bool operator>=   (const iterator& r)  const
+   {  return i_ >= r.i_;  }
+
   };
 
   /// Return an iterator that points to the start of the cycle.

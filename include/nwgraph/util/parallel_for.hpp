@@ -24,9 +24,8 @@
 #endif
 
 #if NWGRAPH_HAVE_HPX
-// #include <hpx/parallel/container_algorithms/transform_reduce.hpp>
-// #include <hpx/parallel/algorithms/transform_reduce.hpp>
-#include <hpx/local/algorithm.hpp>
+#include <hpx/algorithm.hpp>
+#include <hpx/numeric.hpp>
 #endif
 
 namespace nw {
@@ -47,7 +46,7 @@ auto parallel_for_inner(Op&& op, It&& i) {
   } else if constexpr (std::is_integral_v<std::decay_t<It>>) {
     return std::forward<Op>(op)(std::forward<It>(i));
   } else {
-    if constexpr (is_tuple_v<decltype(*std::forward<It>(i))>) {
+    if constexpr (is_tuple_v<std::decay_t<decltype(*std::forward<It>(i))>>) {
       return parallel_for_inner(std::forward<Op>(op), *std::forward<It>(i));
     } else {
       return std::forward<Op>(op)(*std::forward<It>(i));
@@ -138,21 +137,24 @@ void parallel_for(Range&& range, Op&& op) {
 ///                     `range`.
 template <class Range, class Op, class Reduce, class T>
 auto parallel_reduce(Range&& range, Op&& op, Reduce&& reduce, T init) {
-  if (range.is_divisible()) {
 #if NWGRAPH_HAVE_TBB
+  if (range.is_divisible()) {
     return tbb::parallel_reduce(
         std::forward<Range>(range), init,
         [&](auto&& sub, auto partial) { return parallel_for_sequential(std::forward<decltype(sub)>(sub), op, reduce, partial); }, reduce);
-#elif NWGRAPH_HAVE_HPX
-    return hpx::ranges::transform_reduce(hpx::execution::par,
-        std::forward<Range>(range), init, std::forward<Reduce>(reduce),
-        [&](auto&& elem) {
-            return parallel_for_inner(op, std::forward<decltype(elem)>(elem));
-        });
-#endif
-  } else {
+      } else {
     return parallel_for_sequential(std::forward<Range>(range), std::forward<Op>(op), std::forward<Reduce>(reduce), init);
   }
+#elif NWGRAPH_HAVE_HPX
+       return hpx::ranges::transform_reduce(hpx::execution::par,
+        range, init, reduce,
+        [&](auto&& elem) {
+            // parallel_for_inner(...) expects an iterator, but HPX already dereferences the iterator to give us "elem".
+            // We work around that by taking the address of "elem", which can be dereferenced, so in that sense it will
+            // function in an equivalent way to passing an iterator.
+            return parallel_for_inner(op, &elem);
+        });
+#endif
 }
 }    // namespace graph
 }    // namespace nw
