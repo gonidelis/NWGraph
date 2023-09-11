@@ -51,18 +51,17 @@ public:
       : begin_(rhs.begin_), end_(rhs.end_), cutoff_(rhs.cutoff_), cycle_(rhs.cycle_ + rhs.stride_), stride_(rhs.stride_ *= 2) {}
 #endif
   struct iterator {
+    using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
+    using value_type = typename std::iterator_traits<Iterator>::value_type;
+    using difference_type = typename std::iterator_traits<Iterator>::difference_type;
+    using pointer = typename std::iterator_traits<Iterator>::pointer;
+    using reference = typename std::iterator_traits<Iterator>::reference;
+
     Iterator        i_;
     difference_type stride_;
-    using iterator_category = typename std::iterator_traits<Iterator>::iterator_category;
-    using value_type = std::iterator_traits<Iterator>::value_type;
-    using difference_type = std::iterator_traits<Iterator>::difference_type;
-    using pointer = std::iterator_traits<Iterator>::pointer;
-    using reference = std::iterator_traits<Iterator>::reference;
 
     decltype(auto) operator*() { return *i_; }
     
-
-
    //Increment / Decrement
    iterator& operator++() 
    {  i_ += stride_; return *this;  }
