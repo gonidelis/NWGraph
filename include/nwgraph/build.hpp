@@ -145,7 +145,7 @@ auto fill_adj_list(edge_list_t& el, adj_list_t& al) {
 template <class Vector1, class Vector2, class Perm>
 void permute(const Vector1& vec1, Vector2& vec2, const Perm& perm) {
 #if NWGRAPH_HAVE_TBB
-  tbb::parallel_for(tbb::blocked_range(0ul, perm.size()), [&](auto&& r) {
+  tbb::parallel_for(tbb::blocked_range<std::uint64_t>(0ul, perm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       vec2[i] = vec1[perm[i]];
     }
@@ -456,7 +456,7 @@ template <degree_enumerable_graph Graph, class ExecutionPolicy = default_executi
 auto degrees(const Graph& graph, ExecutionPolicy&& policy = {}) {
   std::vector<vertex_id_t<Graph>> degree_v(num_vertices(graph));
 #if NWGRAPH_HAVE_TBB
-  tbb::parallel_for(tbb::blocked_range(0ul, degree_v.size()), [&](auto&& r) {
+  tbb::parallel_for(tbb::blocked_range<std::uint64_t>(0ul, degree_v.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       degree_v[i] = degree(graph[i]);
     }
@@ -536,7 +536,7 @@ auto perm_by_degree(edge_list_t& el, const Vector& degree, std::string direction
 
   std::vector<typename edge_list_t::vertex_id_type> perm(degree.size());
 #if NWGRAPH_HAVE_TBB
-  tbb::parallel_for(tbb::blocked_range(0ul, perm.size()), [&](auto&& r) {
+  tbb::parallel_for(tbb::blocked_range<std::uint64_t>(0ul, perm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       perm[i] = i;
     }
@@ -575,7 +575,7 @@ requires(true == is_unipartite<typename edge_list_t::unipartite_graph_base>::val
                                                                                                  ExecutionPolicy&& policy = {}) {
   std::vector<typename edge_list_t::vertex_id_type> iperm(perm.size());
 #if NWGRAPH_HAVE_TBB
-  tbb::parallel_for(tbb::blocked_range(0ul, iperm.size()), [&](auto&& r) {
+  tbb::parallel_for(tbb::blocked_range<std::uint64_t>(0ul, iperm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       iperm[perm[i]] = i;
     }
@@ -609,7 +609,7 @@ requires(false == is_unipartite<typename edge_list_t::bipartite_graph_base>::val
                                                                                                  ExecutionPolicy&& policy = {}) {
   std::vector<typename edge_list_t::vertex_id_type> iperm(perm.size());
 #if NWGRAPH_HAVE_TBB
-  tbb::parallel_for(tbb::blocked_range(0ul, iperm.size()), [&](auto&& r) {
+  tbb::parallel_for(tbb::blocked_range<std::uint64_t>(0ul, iperm.size()), [&](auto&& r) {
     for (auto i = r.begin(), e = r.end(); i != e; ++i) {
       iperm[perm[i]] = i;
     }

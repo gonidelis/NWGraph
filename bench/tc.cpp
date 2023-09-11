@@ -37,12 +37,13 @@ static constexpr const char USAGE[] =
       -V, --verbose         run in verbose mode
 )";
 
-#include <hpx/hpx_main.hpp>
-#if NWGRAPH_HAVE_HPX
-#endif
 
 #if NWGRAPH_HAVE_HPX
 #include <hpx/hpx_main.hpp>
+#endif
+
+#ifdef _MSC_VER
+#pragma comment(lib, "Ws2_32.lib")
 #endif
 
 #include "nwgraph/adjacency.hpp"
@@ -126,10 +127,9 @@ static std::size_t TCVerifier(Graph& graph) {
   for (auto&& [u, v] : edge_range(graph)) {
     auto u_out = graph[u];
     auto v_out = graph[v];
-    auto end   = std::set_intersection(u_out.begin(), u_out.end(), v_out.begin(), v_out.end(), intersection.begin());
-    intersection.resize(end - intersection.begin());
-    total += intersection.size();
+    auto end = std::set_intersection(u_out.begin(), u_out.end(), v_out.begin(), v_out.end(), std::back_inserter(intersection));
   }
+  total = intersection.size();
   return total;    // note that our processed Graph doesn't produce extra counts
                    // like the GAP verifier normally would
 }
@@ -147,7 +147,7 @@ auto config_log() {
   auto dis  = std::uniform_int_distribution<short>(97, 122);
   uuid_.resize(uuid_size_);
   std::generate(uuid_.begin(), uuid_.end(), [&] { return dis(gen); });
-
+  
   if (int e = gethostname(host_, sizeof(host_))) {
     std::cerr << "truncated host name\n";
     strncpy(host_, "ghost", 15);
