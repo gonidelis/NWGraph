@@ -37,7 +37,9 @@
 
 #include "nwgraph/containers/zip.hpp"
 
+#ifdef NWGRAPH_HAVE_TBB
 #include "tbb/parallel_for.h"
+#endif
 
 namespace nw {
 namespace graph {

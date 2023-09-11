@@ -144,7 +144,7 @@ auto config_log() {
 
   auto seed = std::random_device();
   auto gen  = std::mt19937(seed());
-  auto dis  = std::uniform_int_distribution<char>(97, 122);
+  auto dis  = std::uniform_int_distribution<short>(97, 122);
   uuid_.resize(uuid_size_);
   std::generate(uuid_.begin(), uuid_.end(), [&] { return dis(gen); });
 
@@ -202,7 +202,7 @@ void run_bench(int argc, char* argv[]) {
   bool verify  = args["--verify"].asBool();
   bool verbose = args["--verbose"].asBool();
   bool debug   = args["--debug"].asBool();
-  long trials  = args["-n"].asLong() ?: 1;
+  long trials  = args["-n"].asLong() ? args["-n"].asLong() : 1;
 
   // Read the more complex options
   std::string direction  = "ascending";
@@ -289,26 +289,26 @@ void run_bench(int argc, char* argv[]) {
                 return triangle_count_v3(cel_a);
               case 4:
                 return triangle_count(cel_a, thread);
-              // case 5:
-              //   return triangle_count_v5(cel_a.begin(), cel_a.end(), thread);
-              // case 6:
-              //   return triangle_count_v6(cel_a.begin(), cel_a.end(), thread);
-              // case 7:
-              //   return triangle_count_v7(cel_a);
-              // case 8:
-              //   return triangle_count_v7(cel_a, std::execution::seq, std::execution::par_unseq);
-              // case 9:
-              //   return triangle_count_v7(cel_a, std::execution::par_unseq, std::execution::par_unseq);
-              // case 10:
-              //   return triangle_count_v10(cel_a);
-              // case 11:
-              //   return triangle_count_v10(cel_a, std::execution::par_unseq, std::execution::par_unseq, std::execution::par_unseq);
-              // case 12:
-              //   return triangle_count_v12(cel_a, thread);
-              // case 13:
-              //   return triangle_count_v13(cel_a, thread);
-              // case 14:
-              //   return triangle_count_v14(cel_a);
+               case 5:
+                 return triangle_count_v5(cel_a.begin(), cel_a.end(), thread);
+               case 6:
+                 return triangle_count_v6(cel_a.begin(), cel_a.end(), thread);
+               case 7:
+                 return triangle_count_v7(cel_a);
+               case 8:
+                 return triangle_count_v7(cel_a, std::execution::seq, std::execution::par_unseq);
+               case 9:
+                 return triangle_count_v7(cel_a, std::execution::par_unseq, std::execution::par_unseq);
+               case 10:
+                 return triangle_count_v10(cel_a);
+               case 11:
+                 return triangle_count_v10(cel_a, std::execution::par_unseq, std::execution::par_unseq, std::execution::par_unseq);
+               case 12:
+                 return triangle_count_v12(cel_a, thread);
+               case 13:
+                 return triangle_count_v13(cel_a, thread);
+               case 14:
+                 return triangle_count_v14(cel_a);
 #if 0
 	    case 15:
 	      return triangle_count_edgesplit(cel_a, thread);

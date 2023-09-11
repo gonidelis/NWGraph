@@ -140,13 +140,21 @@ auto build_degrees(const Graph& graph) {
 #if NWGRAPH_HAVE_TBB
   tbb::parallel_for(edge_range(graph), [&](auto&& edges) {
     for (auto&& [i, j] : edges) {
-      __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
+#ifdef _MSC_VER
+        _InterlockedIncrement(&degrees[j]);
+#else
+        __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
+#endif
     }
   });
 #elif NWGRAPH_HAVE_HPX
   hpx::ranges::for_each(hpx::execution::par, edge_range(graph), [&](auto&& edges){
     for (auto&& [i,j] : edges){
-      __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
+#ifdef _MSC_VER
+        _InterlockedIncrement(&degrees[j]);
+#else
+        __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
+#endif
     }
   });
 #endif

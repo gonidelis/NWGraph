@@ -56,14 +56,14 @@ namespace graph {
 
 template <typename T = std::size_t>
 
-class counting_output_iterator    // : public std::iterator<std::output_iterator_tag, std::ptrdiff_t>
+class counting_output_iterator : public std::iterator<std::output_iterator_tag, std::ptrdiff_t>
 {
 public:
-  using iterator_category = std::output_iterator_tag;
-  using value_type        = void;
-  using difference_type   = void;
-  using pointer           = void;
-  using reference         = void;
+  //using iterator_category = std::random_access_iterator_tag;
+  //using value_type        = void;
+  //using difference_type   = void;
+  //using pointer           = void;
+  //using reference         = void;
 
   counting_output_iterator(T& count) : count { count } {
   }
@@ -126,13 +126,13 @@ struct min {
 ///
 /// @tparam           T The underlying type of the counter.
 template <class T = std::size_t>
-struct counter    // : public std::iterator<std::output_iterator_tag, std::ptrdiff_t>
+struct counter : public std::iterator<std::forward_iterator_tag, std::ptrdiff_t>
 {
-  using iterator_category = std::output_iterator_tag;
-  using value_type        = void;
-  using difference_type   = void;
-  using pointer           = void;
-  using reference         = void;
+  //using iterator_category = std::forward_iterator_tag;
+  //using value_type        = void;
+  //using difference_type   = void;
+  //using pointer           = void;
+  //using reference         = void;
 
 
   T count;
