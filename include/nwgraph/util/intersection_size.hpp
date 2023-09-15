@@ -19,6 +19,10 @@
 #include <dpstd/algorithm>
 #include <dpstd/execution>
 #include <dpstd/numeric>
+#elif defined(NWGRAPH_HAVE_HPX)
+#include <hpx/algorithm.hpp>
+#include <hpx/execution.hpp>
+#include <hpx/numeric.hpp>
 #else
 #include <algorithm>
 #include <execution>
@@ -59,6 +63,10 @@ std::size_t intersection_size(A i, B&& ie, C j, D&& je, ExecutionPolicy&& ep) {
   // @todo We really don't need set intersection. You'd hope that it would be
   //       efficient with the output counter, but it just isn't. Parallelizing
   //       the intersection size seems non-trivial though.
+#ifdef NWGRAPH_HAVE_HPX
+      return hpx::set_intersection(hpx::execution::par, std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j),
+          std::forward<D>(je), nw::graph::counter{}, lt);
+#else
   if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>) {
     std::size_t n = 0;
     while (i != ie && j != je) {
@@ -75,9 +83,10 @@ std::size_t intersection_size(A i, B&& ie, C j, D&& je, ExecutionPolicy&& ep) {
     return n;
     (void)ep;
   } else {
-    return std::size_t(std::set_intersection(std::forward<ExecutionPolicy>(ep), std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j),
+      return std::size_t(std::set_intersection(std::forward<ExecutionPolicy>(ep), std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j),
                                  std::forward<D>(je), nw::graph::counter{}, lt));
   }
+#endif
 }
 
 /// A convenience overload for `intersection_size`.

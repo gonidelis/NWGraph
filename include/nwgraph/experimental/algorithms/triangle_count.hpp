@@ -240,7 +240,11 @@ template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::executio
           class InnerExecutionPolicy = std::execution::sequenced_policy>
 [[gnu::noinline]] std::size_t triangle_count_v7(const Graph& A, OuterExecutionPolicy&& outer = {}, InnerExecutionPolicy inner = {}) {
   std::atomic<std::size_t> total_triangles = 0;
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
+#else
   std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
+#endif
     std::size_t triangles = 0;
     for (auto i = x.begin(), e = x.end(); i != e; ++i) {
       triangles += nw::graph::intersection_size(i, e, A[std::get<0>(*i)], inner);

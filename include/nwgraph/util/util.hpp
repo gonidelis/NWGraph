@@ -126,10 +126,10 @@ struct min {
 ///
 /// @tparam           T The underlying type of the counter.
 template <class T = std::size_t>
-struct counter : public std::iterator<std::forward_iterator_tag, std::ptrdiff_t>
+struct counter : public std::iterator<std::forward_iterator_tag, counter<T>>
 {
   //using iterator_category = std::forward_iterator_tag;
-  //using value_type        = void;
+  //using value_type        = typedef T;
   //using difference_type   = void;
   //using pointer           = void;
   //using reference         = void;
