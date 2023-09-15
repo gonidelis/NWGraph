@@ -45,7 +45,7 @@ std::uint32_t inline constexpr __clz(std::uint32_t value){
     return __builtin_clz(value);
 }
 
-std::uint64_t inline constexpr __clzc(std::uint64_t value){
+std::uint64_t inline constexpr __clzl(std::uint64_t value){
     return __builtin_clzl(value);
 }
 #define NWGRAPH_BUILTIN_CONSTEXPR constexpr
