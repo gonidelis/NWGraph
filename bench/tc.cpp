@@ -280,35 +280,47 @@ void run_bench(int argc, char* argv[]) {
           auto&& [time, triangles] = time_op([&]() -> std::size_t {
             switch (id) {
               case 0:
-                return triangle_count(cel_a);
+                //return triangle_count(cel_a);
               case 1:
-                return triangle_count_v1(cel_a);
+               // return triangle_count_v1(cel_a);
               case 2:
-                return triangle_count_v2(cel_a);
+              //  return triangle_count_v2(cel_a);
               case 3:
-                return triangle_count_v3(cel_a);
+             //   return triangle_count_v3(cel_a);
               case 4:
-                return triangle_count(cel_a, thread);
+               // return triangle_count(cel_a, thread);
                case 5:
-                 return triangle_count_v5(cel_a.begin(), cel_a.end(), thread);
+               //  return triangle_count_v5(cel_a.begin(), cel_a.end(), thread);
                case 6:
-                 return triangle_count_v6(cel_a.begin(), cel_a.end(), thread);
+                // return triangle_count_v6(cel_a.begin(), cel_a.end(), thread);
                case 7:
-                 return triangle_count_v7(cel_a);
+                // return triangle_count_v7(cel_a);
                case 8:
+#ifdef NWGRAPH_HAVE_HPX
+                 return triangle_count_v7(cel_a, hpx::execution::seq, hpx::execution::par_unseq);
+#else
                  return triangle_count_v7(cel_a, std::execution::seq, std::execution::par_unseq);
+#endif
                case 9:
+#ifdef NWGRAPH_HAVE_HPX
+                // return triangle_count_v7(cel_a, hpx::execution::par_unseq, hpx::execution::par_unseq);
+#else
                  return triangle_count_v7(cel_a, std::execution::par_unseq, std::execution::par_unseq);
+#endif
                case 10:
-                 return triangle_count_v10(cel_a);
+                 //return triangle_count_v10(cel_a);
                case 11:
+#ifdef NWGRAPH_HAVE_HPX
+                 //return triangle_count_v10(cel_a, hpx::execution::par_unseq, hpx::execution::par_unseq, hpx::execution::par_unseq);
+#else
                  return triangle_count_v10(cel_a, std::execution::par_unseq, std::execution::par_unseq, std::execution::par_unseq);
+#endif
                case 12:
-                 return triangle_count_v12(cel_a, thread);
+              //   return triangle_count_v12(cel_a, thread);
                case 13:
-                 return triangle_count_v13(cel_a, thread);
+              //   return triangle_count_v13(cel_a, thread);
                case 14:
-                 return triangle_count_v14(cel_a);
+                // return triangle_count_v14(cel_a);
 #if 0
 	    case 15:
 	      return triangle_count_edgesplit(cel_a, thread);

@@ -236,11 +236,21 @@ template <typename RandomAccessIterator>
 /// @param        inner The inner execution policy.
 ///
 /// @returns            The number of triangles in the graph.
-template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::execution::parallel_unsequenced_policy,
+template <adjacency_list_graph Graph, 
+#ifdef NWGRAPH_HAVE_HPX
+    class OuterExecutionPolicy = hpx::execution::parallel_unsequenced_policy,
+    class InnerExecutionPolicy = hpx::execution::sequenced_policy>
+#else
+    class OuterExecutionPolicy = std::execution::parallel_unsequenced_policy,
           class InnerExecutionPolicy = std::execution::sequenced_policy>
+#endif
 [[gnu::noinline]] std::size_t triangle_count_v7(const Graph& A, OuterExecutionPolicy&& outer = {}, InnerExecutionPolicy inner = {}) {
   std::atomic<std::size_t> total_triangles = 0;
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
+#else
   std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
+#endif
     std::size_t triangles = 0;
     for (auto i = x.begin(), e = x.end(); i != e; ++i) {
       triangles += nw::graph::intersection_size(i, e, A[std::get<0>(*i)], inner);
@@ -271,18 +281,34 @@ template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::executio
 /// @param          set The set intersection execution policy.
 ///
 /// @returns            The number of triangles in the graph.
-template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::execution::parallel_unsequenced_policy,
-          class InnerExecutionPolicy = std::execution::parallel_policy, class SetExecutionPolicy = std::execution::sequenced_policy>
+
+#ifdef NWGRAPH_HAVE_HPX
+template <adjacency_list_graph Graph, class OuterExecutionPolicy = hpx::execution::parallel_unsequenced_policy,
+          class InnerExecutionPolicy = hpx::execution::parallel_policy, class SetExecutionPolicy = hpx::execution::sequenced_policy>
 [[gnu::noinline]] std::size_t triangle_count_v10(const Graph& A, OuterExecutionPolicy&& outer = {}, InnerExecutionPolicy&& inner = {},
-                                                 SetExecutionPolicy&& set = {}) {
-  std::atomic<std::size_t> total_triangles = 0;
+    SetExecutionPolicy&& set = {}) {
+    std::atomic<std::size_t> total_triangles = 0;
+    hpx::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
+        std::atomic<std::size_t> triangles = 0;
+        hpx::for_each(inner, x.begin(), x.end(), [&](auto&& v) { triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set); });
+        total_triangles += triangles;
+        });
+    return total_triangles;
+}
+#else
+template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::execution::parallel_unsequenced_policy,
+    class InnerExecutionPolicy = std::execution::parallel_policy, class SetExecutionPolicy = std::execution::sequenced_policy>
+[[gnu::noinline]] std::size_t triangle_count_v10(const Graph & A, OuterExecutionPolicy && outer = {}, InnerExecutionPolicy && inner = {},
+    SetExecutionPolicy && set = {}) {
+    std::atomic<std::size_t> total_triangles = 0;
   std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
-    std::atomic<std::size_t> triangles = 0;
-    std::for_each(inner, x.begin(), x.end(), [&](auto&& v) { triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set); });
-    total_triangles += triangles;
-  });
+	  std::atomic<std::size_t> triangles = 0;
+	  std::for_each(inner, x.begin(), x.end(), [&](auto&& v) { triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set); });
+	  total_triangles += triangles;
+   });
   return total_triangles;
 }
+#endif
 
 /// Two-dimensional triangle counting.
 ///
@@ -302,7 +328,11 @@ template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::executio
 /// @param          set The execution policy for the set intersection.
 ///
 /// @returns            The number of triangles in the graph.
+#ifdef NWGRAPH_HAVE_HPX
+template <adjacency_list_graph Graph, class SetExecutionPolicy = hpx::execution::sequenced_policy>
+#else
 template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution::sequenced_policy>
+#endif
 [[gnu::noinline]] std::size_t triangle_count_v12(const Graph& graph, int stride, SetExecutionPolicy&& set = {}) {
   return nw::graph::parallel_reduce(
       nw::graph::cyclic(graph, stride),
@@ -335,7 +365,11 @@ template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution:
 /// @param          set The execution policy for the set intersection.
 ///
 /// @returns            The number of triangles in the graph.
+#ifdef NWGRAPH_HAVE_HPX
+template <adjacency_list_graph Graph, class SetExecutionPolicy = hpx::execution::sequenced_policy>
+#else
 template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution::sequenced_policy>
+#endif
 [[gnu::noinline]] std::size_t triangle_count_v13(const Graph& graph, int stride, SetExecutionPolicy&& set = {}) {
   return nw::graph::parallel_reduce(
       nw::graph::cyclic(graph, stride),
@@ -369,7 +403,11 @@ template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution:
 /// @param          set The execution policy for the set intersection.
 ///
 /// @return             The number of triangles in the graph.
+#ifdef NWGRAPH_HAVE_HPX
+template <adjacency_list_graph Graph, class SetExecutionPolicy = hpx::execution::sequenced_policy>
+#else
 template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution::sequenced_policy>
+#endif
 [[gnu::noinline]] std::size_t triangle_count_v14(const Graph& graph, SetExecutionPolicy&& set = {}) {
   return nw::graph::parallel_reduce(
       make_edge_range(graph), [&](auto&& u, auto&& v) { return nw::graph::intersection_size(graph[u], graph[v], set); }, std::plus{}, 0ul);
@@ -389,7 +427,11 @@ template <adjacency_list_graph Graph, class SetExecutionPolicy = std::execution:
 /// @param          set The execution policy for the set intersection.
 ///
 /// @return             The number of triangles in the graph.
+#ifdef NWGRAPH_HAVE_HPX
+template <class Graph, class SetExecutionPolicy = hpx::execution::sequenced_policy>
+#else
 template <class Graph, class SetExecutionPolicy = std::execution::sequenced_policy>
+#endif
 [[gnu::noinline]] std::size_t triangle_count_edgerange(const Graph& graph, SetExecutionPolicy&& set = {}) {
   return nw::graph::parallel_for(
       graph.edges(nw::graph::pow2(20)), [&](auto&& u, auto&& v) { return nw::graph::intersection_size(graph[u], graph[v], set); }, std::plus{},
@@ -411,7 +453,11 @@ template <class Graph, class SetExecutionPolicy = std::execution::sequenced_poli
 /// @param          set The execution policy for the set intersection.
 ///
 /// @return             The number of triangles in the graph.
+#ifdef NWGRAPH_HAVE_HPX
+template <class Graph, class SetExecutionPolicy = hpx::execution::sequenced_policy>
+#else
 template <class Graph, class SetExecutionPolicy = std::execution::sequenced_policy>
+#endif
 [[gnu::noinline]] std::size_t triangle_count_edgerange_cyclic(const Graph& graph, int stride, SetExecutionPolicy&& set = {}) {
   return nw::graph::parallel_for(
       nw::graph::cyclic(graph.edges(), stride), [&](auto&& u, auto&& v) { return nw::graph::intersection_size(graph[u], graph[v], set); },
