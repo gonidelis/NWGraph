@@ -45,7 +45,7 @@ std::uint32_t inline constexpr __clz(std::uint32_t value){
     return __builtin_clz(value);
 }
 
-std::uint64_t inline constexpr __clzc(std::uint64_t value){
+std::uint64_t inline constexpr __clzl(std::uint64_t value){
     return __builtin_clzl(value);
 }
 #define NWGRAPH_BUILTIN_CONSTEXPR constexpr
@@ -126,10 +126,10 @@ struct min {
 ///
 /// @tparam           T The underlying type of the counter.
 template <class T = std::size_t>
-struct counter : public std::iterator<std::forward_iterator_tag, std::ptrdiff_t>
+struct counter : public std::iterator<std::forward_iterator_tag, counter<T>>
 {
   //using iterator_category = std::forward_iterator_tag;
-  //using value_type        = void;
+  //using value_type        = typedef T;
   //using difference_type   = void;
   //using pointer           = void;
   //using reference         = void;
