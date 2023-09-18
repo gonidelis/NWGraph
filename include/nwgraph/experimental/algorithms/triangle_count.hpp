@@ -279,13 +279,24 @@ template <adjacency_list_graph Graph, class OuterExecutionPolicy = std::executio
           class InnerExecutionPolicy = std::execution::parallel_policy, class SetExecutionPolicy = std::execution::sequenced_policy>
 [[gnu::noinline]] std::size_t triangle_count_v10(const Graph& A, OuterExecutionPolicy&& outer = {}, InnerExecutionPolicy&& inner = {},
                                                  SetExecutionPolicy&& set = {}) {
-  std::atomic<std::size_t> total_triangles = 0;
-  std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
-    std::atomic<std::size_t> triangles = 0;
-    std::for_each(inner, x.begin(), x.end(), [&](auto&& v) { triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set); });
-    total_triangles += triangles;
-  });
-  return total_triangles;
+#ifdef NWGRAPH_HAVE_HPX
+    std::atomic<std::size_t> total_triangles = 0;
+    hpx::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
+        std::atomic<std::size_t> triangles = 0;
+        // TODO: `set` is diregarded in the HPX side until hpx::set_intersection runs with par execution policy.
+        hpx::for_each(inner, x.begin(), x.end(), [&](auto&& v) { triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set); });
+        total_triangles += triangles;
+        });
+    return total_triangles;
+#else
+    std::atomic<std::size_t> total_triangles = 0;
+    std::for_each(outer, A.begin(), A.end(), [&](auto&& x) {
+        std::atomic<std::size_t> triangles = 0;
+        std::for_each(inner, x.begin(), x.end(), [&](auto&& v) { triangles += nw::graph::intersection_size(x, A[std::get<0>(v)], set); });
+        total_triangles += triangles;
+        });
+    return total_triangles;
+#endif
 }
 
 /// Two-dimensional triangle counting.

@@ -64,8 +64,11 @@ std::size_t intersection_size(A i, B&& ie, C j, D&& je, ExecutionPolicy&& ep) {
   //       efficient with the output counter, but it just isn't. Parallelizing
   //       the intersection size seems non-trivial though.
 #ifdef NWGRAPH_HAVE_HPX
-      return hpx::set_intersection(hpx::execution::par, std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j),
-          std::forward<D>(je), nw::graph::counter{}, lt);
+
+      //std::vector<decltype(i)::value_type> res(std::distance(i, ie));
+  // TODO: Make it work for hpx::exeuction::par.
+      return std::size_t(hpx::set_intersection(hpx::execution::seq, std::forward<A>(i), std::forward<B>(ie), std::forward<C>(j),
+          std::forward<D>(je), nw::graph::counter{}, lt));
 #else
   if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>) {
     std::size_t n = 0;
