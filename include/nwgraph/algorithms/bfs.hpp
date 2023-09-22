@@ -26,6 +26,7 @@
 #include "nwgraph/adaptors/cyclic_range_adaptor.hpp"
 #include "nwgraph/adaptors/vertex_range.hpp"
 #include <queue>
+#include <ranges>
 
 #if NWGRAPH_HAVE_TBB
 #include <tbb/concurrent_queue.h>
@@ -168,7 +169,11 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
   const std::size_t                                   n = nw::graph::pow2(nw::graph::ceil_log2(num_bins));
   const std::size_t                                   N = num_vertices(out_graph);
   const std::size_t                                   M = out_graph.to_be_indexed_.size();
+#ifdef NWGRAPH_HAVE_TBB
   std::vector<tbb::concurrent_vector<vertex_id_type>> q1(n), q2(n);
+#else
+  std::vector<std::vector<vertex_id_type>> q1(n), q2(n);
+#endif
 
   std::vector<vertex_id_type> parents(N);
   nw::graph::AtomicBitVector  front(N, false);
@@ -186,7 +191,11 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
   bool done = false;
   while (!done) {
     if (scout_count > edges_to_check / alpha) {
+#if NWGRAPH_HAVE_HPX
+      std::atomic<std::size_t> awake_count = 0;
+#else
       std::size_t awake_count = 0;
+#endif
       // Initialize the frontier bitmap from the frontier queues, and count the
       // number of non-zeros.
       /*
@@ -209,6 +218,7 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
         std::swap(front, curr);
         curr.clear();
 
+#if NWGRAPH_HAVE_TBB
         awake_count = tbb::parallel_reduce(
             tbb::blocked_range(0ul, N), 0ul,
             [&](auto&& range, auto count) {
@@ -228,17 +238,44 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
               return count;
             },
             std::plus{});
+#elif NWGRAPH_HAVE_HPX
+        // TODO: Giannis says turn that to hpx::transform (no).
+        hpx::ranges::for_each(hpx::execution::par_unseq, std::ranges::iota_view{ 0ul, N }, [&](auto&& u) {
+            std::size_t local_count = 0;
+            if (null_vertex == parents[u]) {
+                // Panos said put a local std::size_t count;
+                for (auto&& elt : in_graph[u]) {
+                    auto v = target(in_graph, elt);
+                    if (front.get(v)) {
+                        curr.atomic_set(u);
+                        parents[u] = v;
+                        ++local_count;
+                        break;
+                    }
+                }
+                awake_count += local_count;
+            }
+        });
+#endif
       } while ((awake_count >= old_awake_count) || (awake_count > N / beta));
 
       if (awake_count == 0) {
         return parents;
       }
 
+#if NWGRAPH_HAVE_TBB
       tbb::parallel_for(curr.non_zeros(nw::graph::pow2(15)), [&](auto&& range) {
         for (auto &&i = range.begin(), e = range.end(); i != e; ++i) {
           q2[*i % n].push_back(*i);
         }
       });
+#elif NWGRAPH_HAVE_HPX
+      hpx::for_each(hpx::execution::par_unseq, curr.non_zeros(nw::graph::pow2(15)), [&](auto&& range) {
+         for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
+              q2[*i % n].push_back(*i);
+         }
+      });
+#endif
 
       scout_count = 1;
     } else {
@@ -270,6 +307,7 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
           },
           std::plus{}, 0ul);
           */
+#if NWGRAPH_HAVE_TBB
       scout_count = nw::graph::parallel_reduce(
           tbb::blocked_range(0ul, q1.size()),
           [&](auto&& i) {
@@ -294,6 +332,32 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
                 std::plus{}, 0ul);
           },
           std::plus{}, 0ul);
+#elif NWGRAPH_HAVE_HPX
+      nw::graph::parallel_reduce(
+          std::ranges::iota_view{ 0ul, q1.size() },
+          [&](auto&& i) {
+            auto&& q = q1[i];
+            return nw::graph::parallel_reduce(
+                std::ranges::iota_view{ 0ul, q1.size() },
+                [&](auto&& i) {
+                  size_t count = 0;
+                  auto&& u     = q[i];
+                  for (auto&& elt : out_graph[u]) {
+                    auto v        = target(out_graph, elt);
+                    auto curr_val = parents[v];
+                    if (null_vertex == curr_val) {
+                      if (nw::graph::cas(parents[v], curr_val, u)) {
+                        q2[u % n].push_back(v);
+                        count += out_graph[v].size();
+                      }
+                    }
+                  }
+                  return count;
+                },
+                std::plus{}, 0ul);
+          },
+          std::plus{}, 0ul);
+#endif
     }
 
     done = true;

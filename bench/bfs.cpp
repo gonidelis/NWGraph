@@ -38,6 +38,10 @@ static constexpr const char USAGE[] =
       -V, --verbose           run in verbose mode
 )";
 
+#if NWGRAPH_HAVE_HPX
+#include <hpx/hpx_main.hpp>
+#endif
+
 #include "nwgraph/algorithms/bfs.hpp"
 #include "nwgraph/experimental/algorithms/bfs.hpp"
 #include "Log.hpp"
@@ -56,11 +60,11 @@ int main(int argc, char* argv[]) {
   bool        verify     = args["--verify"].asBool();
   bool        verbose    = args["--verbose"].asBool();
   bool        debug      = args["--debug"].asBool();
-  long        trials     = args["-n"].asLong() ?: 1;
-  long        iterations = args["-i"].asLong() ?: 1;
-  long        alpha      = args["-a"].asLong() ?: 15;
-  long        beta       = args["-b"].asLong() ?: 18;
-  long        num_bins   = args["-B"].asLong() ?: 32;
+  long        trials     = args["-n"].asLong() ? args["-n"].asLong()  : 1;
+  long        iterations = args["-i"].asLong() ? args["-i"].asLong()  : 1;
+  long        alpha      = args["-a"].asLong() ? args["-a"].asLong()  : 15;
+  long        beta       = args["-b"].asLong() ? args["-b"].asLong()  : 18;
+  long        num_bins   = args["-B"].asLong() ? args["-B"].asLong()  : 32;
   std::string file       = args["-f"].asString();
 
   std::vector ids     = parse_ids(args["--version"].asStringList());
@@ -113,25 +117,25 @@ int main(int argc, char* argv[]) {
             case 0:
               return bfs(graph, source);
             case 1:
-              return bfs_v1(graph, gx, source, num_bins, alpha, beta);
-            case 2:
-              return bfs_v2(graph, gx, source, num_bins, alpha, beta);
-            case 6:
-              return bfs_v6(graph, source);
-            case 7:
-              return bfs_v7(graph, source);
-            case 8:
-              return bfs_v8(graph, source);
-            case 9:
-              return bfs_v9(graph, source);
-            case 10:
-              return bfs_top_down(graph, source);
-            case 11:
-              return bfs(graph, gx, source, num_bins, alpha, beta);
-            case 12:
-              return bfs_top_down_bitmap(graph, source);
-            case 13:
-              return bfs_bottom_up(graph, gx, source);
+            //  return bfs_v1(graph, gx, source, num_bins, alpha, beta);
+            //case 2:
+            //  return bfs_v2(graph, gx, source, num_bins, alpha, beta);
+            //case 6:
+            //  return bfs_v6(graph, source);
+            //case 7:
+            //  return bfs_v7(graph, source);
+            //case 8:
+            //  return bfs_v8(graph, source);
+            //case 9:
+            //  return bfs_v9(graph, source);
+            //case 10:
+            //  return bfs_top_down(graph, source);
+            //case 11:
+            //  return bfs(graph, gx, source, num_bins, alpha, beta);
+            //case 12:
+            //  return bfs_top_down_bitmap(graph, source);
+            //case 13:
+            //  return bfs_bottom_up(graph, gx, source);
             default:
               std::cerr << "Unknown version " << id << "\n";
               return std::vector<vertex_id_type>();

@@ -34,8 +34,7 @@
 #include <tbb/global_control.h>
 #endif
 #if NWGRAPH_HAVE_HPX
-#include <hpx/parallel/container_algorithms/for_each.hpp>
-#include <hpx/parallel/container_algorithms/transform_reduce.hpp>
+#include <hpx/algorithm.hpp>
 #endif
 
 #include <tuple>
@@ -49,9 +48,8 @@ auto set_n_threads(long n) {
 
 #if NWGRAPH_HAVE_TBB
     return tbb::global_control(tbb::global_control::max_allowed_parallelism, n);
-#elif NWGRAPH_HAVE_HPX
-    return hpx::get_num_worker_threads();
 #else
+    throw "HPX does not set number of threads after it's been initialized.";
     return 0;
 #endif
 }
@@ -148,14 +146,14 @@ auto build_degrees(const Graph& graph) {
     }
   });
 #elif NWGRAPH_HAVE_HPX
-  hpx::ranges::for_each(hpx::execution::par, edge_range(graph), [&](auto&& edges){
-    for (auto&& [i,j] : edges){
+  hpx::ranges::for_each(hpx::execution::seq, edge_range(graph), [&](auto&& edges){
+      auto i = std::get<0>(edges);
+      auto j = std::get<1>(edges);
 #ifdef _MSC_VER
         _InterlockedIncrement(&degrees[j]);
 #else
         __atomic_fetch_add(&degrees[j], 1, __ATOMIC_ACQ_REL);
 #endif
-    }
   });
 #endif
   return degrees;

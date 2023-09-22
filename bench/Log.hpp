@@ -12,6 +12,13 @@
  *
  */
 
+#if defined(_MSC_VER) && !defined(NWGRAPH_HAVE_TBB) // TBB includes windows.h which includes winsock2.h
+                                                    // and thus it's included twice.
+#include <winsock2.h>
+#elif defined(__GNUC__) || defined(__clang__)
+#include <unistd.h>
+#endif
+
 #ifndef NW_GRAPH_LOG_HPP
 #define NW_GRAPH_LOG_HPP
 
@@ -31,7 +38,6 @@
 #include <iostream>
 #include <random>
 #include <sstream>
-#include <unistd.h>
 
 namespace nw::graph {
 namespace bench {
@@ -54,7 +60,7 @@ struct Log {
   Log(std::string path) : out_(), os_(path == "-" ? std::cout : out_) {
     auto seed = std::random_device();
     auto gen  = std::mt19937(seed());
-    auto dis  = std::uniform_int_distribution<char>(97, 122);
+    auto dis  = std::uniform_int_distribution<short>(97, 122);
     uuid_.resize(uuid_size_);
     std::generate(uuid_.begin(), uuid_.end(), [&] { return dis(gen); });
 

@@ -70,7 +70,11 @@ target_link_libraries(bc.exe bench_lib)
 add_dependencies(bench bc.exe)
 
 add_executable(bfs.exe bfs.cpp)
-target_link_libraries(bfs.exe bench_lib)
+if (NWGRAPH_USE_HPX)
+target_link_libraries(bfs.exe bench_lib nwgraph_hpx)
+elseif (NWGRAPH_USE_TBB)
+target_link_libraries(bfs.exe bench_lib wsock32 ws2_32 nwgraph_tbb)
+endif()
 add_dependencies(bench bfs.exe)
 
 add_executable(cc.exe cc.cpp) 

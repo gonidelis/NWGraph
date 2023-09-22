@@ -228,8 +228,10 @@ public:
     non_zero_range(const non_zero_range&) = default;
     non_zero_range(non_zero_range&&)      = default;
 
+#ifdef NWGRAPH_HAVE_TBB
     non_zero_range(non_zero_range& a, tbb::split)
         : data_(a.data_), n_(a.n_), begin_(a.begin_), end_(a.begin_ += a.size() / 2), cutoff_(a.cutoff_) {}
+#endif
 
     non_zero_iterator begin() { return {data_, n_, begin_}; }
     non_zero_iterator end() { return {data_, n_, end_}; }

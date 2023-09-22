@@ -26,6 +26,7 @@
 #include "nwgraph/adaptors/vertex_range.hpp"
 #include <queue>
 
+#if NWGRAPH_HAVE_TBB
 #include <tbb/concurrent_queue.h>
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for_each.h>
@@ -186,7 +187,11 @@ auto bfs_v9(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
 
   const size_t                                        num_bins = 32;
   const size_t                                        bin_mask = 0x1F;
+#if NWGRAPH_HAVE_TBB
   std::vector<tbb::concurrent_vector<vertex_id_type>> q1(num_bins), q2(num_bins);
+#else
+  std::vector<std::vector<vertex_id_type>> q1(num_bins), q2(num_bins);
+#endif
   std::vector                                         level(num_vertices(graph), std::numeric_limits<vertex_id_type>::max());
   std::vector                                         parents(num_vertices(graph), std::numeric_limits<vertex_id_type>::max());
   size_t                                              lvl = 0;
@@ -605,4 +610,5 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
 }    // namespace graph
 }    // namespace nw
 
+#endif ////////////////////////////////////////////////////////////////// REMOVE THIS!!!!!
 #endif    // NW_GRAPH_EXPERIMENTAL_BFS_HPP

@@ -89,8 +89,10 @@ public:
   vertex_range(const vertex_range&) = default;
   vertex_range(vertex_range&&)      = default;
 
+#ifdef NWGRAPH_HAVE_TBB
   vertex_range(vertex_range& rhs, tbb::split)
       : begin_(rhs.begin_), end_(rhs.end_) {}
+#endif
 
   counting_iterator<vertex_id_type> begin() const { return begin_; }
   counting_iterator<vertex_id_type> end() const { return end_; }
