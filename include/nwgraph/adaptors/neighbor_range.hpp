@@ -103,11 +103,11 @@ public:
   using iterator       = my_iterator<false>;
   using const_iterator = my_iterator<true>;
 
-  iterator       begin() { return {outer_base_, outer_begin_, outer_end_}; }
-  const_iterator begin() const { return {outer_base_, outer_begin_, outer_end_}; }
+  iterator       begin() { return {outer_base_, outer_begin_, outer_end_-1}; }
+  const_iterator begin() const { return {outer_base_, outer_begin_, outer_end_-1}; }
 
-  iterator       end() { return {outer_base_, outer_end_, outer_end_}; }
-  const_iterator end() const { return {outer_base_, outer_end_, outer_end_}; }
+  iterator       end() { return {outer_base_, outer_end_-1, outer_end_-1}; }
+  const_iterator end() const { return {outer_base_, outer_end_-1, outer_end_-1}; }
 
   std::size_t size() const { return outer_end_ - outer_begin_; }
   bool        empty() const { return begin() == end(); }

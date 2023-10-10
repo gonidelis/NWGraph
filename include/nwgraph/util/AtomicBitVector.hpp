@@ -29,6 +29,12 @@
 #include <memory>
 #include <tuple>
 
+#include <nwgraph/util/util.hpp>
+
+#ifdef NWGRAPH_HAVE_HPX
+#include <hpx/algorithm.hpp>
+#endif
+
 namespace nw {
 namespace graph {
 /// Really basic concurrent bit vector for use as a bitmap.
@@ -75,7 +81,11 @@ public:
   }
 
   /// Clear the bitmap.
+#ifdef NWGRAPH_HAVE_HPX
+  void clear() { hpx::fill(std::execution::par_unseq, data_, data_ + words(bits_), Word(0)); }
+#elif NWGRAPH_HAVE_TBB
   void clear() { std::fill(std::execution::par_unseq, data_, data_ + words(bits_), Word(0)); }
+#endif
 
   /// Get a bit from the vector.
   ///
@@ -170,7 +180,7 @@ public:
       // if there is possibly another non-zero in the current word then use it
       if (word_ < n_ && ++bit_ < BITS) {
         if (Word w = data_[word_] >> bit_) {
-          bit_ += __builtin_ctzl(w);
+          bit_ += nw::graph::ctzl(w);
           return *this;
         }
       }
@@ -196,7 +206,7 @@ public:
       // search for the next non-zero word, starting with word_
       for (; word_ < n_; ++word_) {
         if (Word w = data_[word_]) {
-          bit_ = __builtin_ctzl(w);
+          bit_ = nw::graph::ctzl(w);
           return *this;
         }
       }

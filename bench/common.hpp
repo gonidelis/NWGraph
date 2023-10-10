@@ -49,7 +49,6 @@ auto set_n_threads(long n) {
 #if NWGRAPH_HAVE_TBB
     return tbb::global_control(tbb::global_control::max_allowed_parallelism, n);
 #else
-    throw "HPX does not set number of threads after it's been initialized.";
     return 0;
 #endif
 }

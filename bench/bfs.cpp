@@ -117,21 +117,21 @@ int main(int argc, char* argv[]) {
             case 0:
               return bfs(graph, source);
             case 1:
-            //  return bfs_v1(graph, gx, source, num_bins, alpha, beta);
-            //case 2:
-            //  return bfs_v2(graph, gx, source, num_bins, alpha, beta);
-            //case 6:
-            //  return bfs_v6(graph, source);
-            //case 7:
-            //  return bfs_v7(graph, source);
+              return bfs_v1(graph, gx, source, num_bins, alpha, beta);
+            case 2:
+              return bfs_v2(graph, gx, source, num_bins, alpha, beta);
+            case 6:
+              return bfs_v6(graph, source);
+            case 7:
+              return bfs_v7(graph, source);
             //case 8:
             //  return bfs_v8(graph, source);
             //case 9:
             //  return bfs_v9(graph, source);
             //case 10:
             //  return bfs_top_down(graph, source);
-            //case 11:
-            //  return bfs(graph, gx, source, num_bins, alpha, beta);
+            case 11:
+              return bfs(graph, gx, source, num_bins, alpha, beta);
             //case 12:
             //  return bfs_top_down_bitmap(graph, source);
             //case 13:

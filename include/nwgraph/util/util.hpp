@@ -27,32 +27,48 @@
 
 #include "nwgraph/util/traits.hpp"
 
-
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <cstdint>
 #include <intrin.h>
-
-std::uint32_t inline __clz(std::uint32_t value){
-    return __lzcnt(value);
-}
-
-std::uint64_t inline __clzl(std::uint64_t value){
-    return __lzcnt64(value);
-}
 #define NWGRAPH_BUILTIN_CONSTEXPR
 #else
-std::uint32_t inline constexpr __clz(std::uint32_t value){
-    return __builtin_clz(value);
-}
-
-std::uint64_t inline constexpr __clzl(std::uint64_t value){
-    return __builtin_clzl(value);
-}
 #define NWGRAPH_BUILTIN_CONSTEXPR constexpr
 #endif
 
+
+
+
 namespace nw {
 namespace graph {
+
+    #if defined(_MSC_VER) && !defined(__clang__)
+
+        std::uint32_t inline clz(std::uint32_t value) {
+            return __lzcnt(value);
+        }
+
+        std::uint64_t inline clzl(std::uint64_t value) {
+            return __lzcnt64(value);
+        }
+
+
+        std::uint64_t inline ctzl(std::uint64_t value) {
+            return _tzcnt_u64(value);
+        }
+
+    #else
+        std::uint32_t inline constexpr clz(std::uint32_t value) {
+            return __builtin_clz(value);
+        }
+
+        std::uint64_t inline constexpr clzl(std::uint64_t value) {
+            return __builtin_clzl(value);
+        }
+
+        std::uint64_t inline constexpr ctzl(std::uint64_t value) {
+            return __builtin_ctzl(value);
+        }
+    #endif
 
 template <typename T = std::size_t>
 
@@ -232,13 +248,13 @@ auto property_ptr(Iterator& inner) {
 /// left shift bits we need to shift out of the value to get to 0.
 static inline NWGRAPH_BUILTIN_CONSTEXPR int log2(uint64_t val) {
   assert(val);
-  return ((sizeof(val) * 8 - 1) - __clzl(val));
+  return ((sizeof(val) * 8 - 1) - clzl(val));
 }
 
 /// http://stackoverflow.com/questions/3272424/compute-fast-log-base-2-ceiling
 static inline NWGRAPH_BUILTIN_CONSTEXPR int ceil_log2(uint32_t val) {
   assert(val);
-  return ((sizeof(val) * 8 - 1) - __clz(val)) + (!!(val & (val - 1)));
+  return ((sizeof(val) * 8 - 1) - clz(val)) + (!!(val & (val - 1)));
 }
 
 static inline NWGRAPH_BUILTIN_CONSTEXPR int ceil_log2(int32_t val) {
@@ -249,7 +265,7 @@ static inline NWGRAPH_BUILTIN_CONSTEXPR int ceil_log2(int32_t val) {
 /// http://stackoverflow.com/questions/3272424/compute-fast-log-base-2-ceiling
 static inline NWGRAPH_BUILTIN_CONSTEXPR int ceil_log2(uint64_t val) {
   assert(val);
-  return ((sizeof(val) * 8 - 1) - __clzl(val)) + (!!(val & (val - 1)));
+  return ((sizeof(val) * 8 - 1) - clzl(val)) + (!!(val & (val - 1)));
 }
 
 /// Raise 2^exp, when exp is an integer.
