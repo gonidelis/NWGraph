@@ -39,6 +39,8 @@
 
 #ifdef NWGRAPH_HAVE_TBB
 #include "tbb/parallel_for.h"
+#elif NWGRAPH_HAVE_HPX
+#include <hpx/algorithm.hpp>
 #endif
 
 namespace nw {
@@ -63,6 +65,16 @@ void lexical_sort_by(edge_list_t& el, ExecutionPolicy&& policy = {}) {
 
   const int jdx = (idx + 1) % 2;
 
+#ifdef NWGRAPH_HAVE_HPX
+  if constexpr (idx == 0) {
+    hpx::sort(policy, el.begin(), el.end());
+  }
+  else {
+    hpx::sort(policy, el.begin(), el.end(), [](const auto& a, const auto& b) -> bool {
+        return std::tie(std::get<1>(a), std::get<0>(a)) < std::tie(std::get<1>(b), std::get<0>(b));
+    });
+  }
+#else
   if constexpr (idx == 0) {
     std::sort(policy, el.begin(), el.end());
   } else {
@@ -70,6 +82,7 @@ void lexical_sort_by(edge_list_t& el, ExecutionPolicy&& policy = {}) {
       return std::tie(std::get<1>(a), std::get<0>(a)) < std::tie(std::get<1>(b), std::get<0>(b));
     });
   }
+#endif
 }
 
 template <int idx, edge_list_graph edge_list_t, class ExecutionPolicy = default_execution_policy>
@@ -174,25 +187,47 @@ void permute_helper(edge_list_t& el, adjacency_t& cs, std::index_sequence<Is...>
 }
 
 
+#ifdef NWGRAPH_HAVE_HPX
 template <edge_list_graph edge_list_t, adjacency_list_graph adjacency_t, class ExecutionPolicy = default_execution_policy, size_t... Is>
 void fill_helper(edge_list_t& el, adjacency_t& cs, std::index_sequence<Is...> is, ExecutionPolicy&& policy = {}) {
-  (..., (std::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
+  (..., (hpx::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
                    std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).end(), std::get<Is + 1>(cs.to_be_indexed_).begin())));
 }
 
 template <edge_list_graph edge_list_t, adjacency_list_graph adjacency_t, class ExecutionPolicy = default_execution_policy, size_t... Is>
 void copy_helper(edge_list_t& el, adjacency_t& cs, std::index_sequence<Is...> is, size_t offset, ExecutionPolicy&& policy = {}) {
   (...,
-   (std::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
+      (hpx::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
               std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).end(), std::get<Is + 1>(cs.to_be_indexed_).begin() + offset)));
 }
 
 template <edge_list_graph edge_list_t, adjacency_list_graph adjacency_t, class T, class ExecutionPolicy = default_execution_policy,
           size_t... Is>
 void fill_helper_tmp(edge_list_t& el, adjacency_t& cs, std::index_sequence<Is...> is, T& Tmp, ExecutionPolicy&& policy = {}) {
-  (..., (std::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(Tmp)).begin(),
+  (..., (hpx::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(Tmp)).begin(),
                    std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(Tmp)).end(), std::get<Is + 1>(cs.to_be_indexed_).begin())));
 }
+#else
+template <edge_list_graph edge_list_t, adjacency_list_graph adjacency_t, class ExecutionPolicy = default_execution_policy, size_t... Is>
+void fill_helper(edge_list_t& el, adjacency_t& cs, std::index_sequence<Is...> is, ExecutionPolicy&& policy = {}) {
+    (..., (std::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
+        std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).end(), std::get<Is + 1>(cs.to_be_indexed_).begin())));
+}
+
+template <edge_list_graph edge_list_t, adjacency_list_graph adjacency_t, class ExecutionPolicy = default_execution_policy, size_t... Is>
+void copy_helper(edge_list_t& el, adjacency_t& cs, std::index_sequence<Is...> is, size_t offset, ExecutionPolicy&& policy = {}) {
+    (...,
+        (std::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
+            std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(el)).end(), std::get<Is + 1>(cs.to_be_indexed_).begin() + offset)));
+}
+
+template <edge_list_graph edge_list_t, adjacency_list_graph adjacency_t, class T, class ExecutionPolicy = default_execution_policy,
+    size_t... Is>
+void fill_helper_tmp(edge_list_t& el, adjacency_t& cs, std::index_sequence<Is...> is, T& Tmp, ExecutionPolicy&& policy = {}) {
+    (..., (std::copy(policy, std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(Tmp)).begin(),
+        std::get<Is + 2>(dynamic_cast<typename edge_list_t::base&>(Tmp)).end(), std::get<Is + 1>(cs.to_be_indexed_).begin())));
+}
+#endif
 
 /**
  * @brief This function fills an adjacency list graph structure from edges contained in a directed edge list.
@@ -222,7 +257,11 @@ void fill_directed(edge_list_t& el, Int N, adjacency_t& cs, ExecutionPolicy&& po
 
   cs.indices_.resize(N + 1);
   cs.indices_[0] = 0;
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::inclusive_scan(policy, degree.begin(), degree.end(), cs.indices_.begin() + 1);
+#else
   std::inclusive_scan(policy, degree.begin(), degree.end(), cs.indices_.begin() + 1);
+#endif
   cs.to_be_indexed_.resize(el.size());
 
 #if 0
@@ -250,9 +289,14 @@ void fill_directed(edge_list_t& el, Int N, adjacency_t& cs, ExecutionPolicy&& po
 
   // Better yet
   const int kdx = (idx + 1) % 2;
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::copy(policy, std::get<kdx>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
+      std::get<kdx>(dynamic_cast<typename edge_list_t::base&>(el)).end(), std::get<0>(cs.to_be_indexed_).begin());
+#else
   std::copy(policy, std::get<kdx>(dynamic_cast<typename edge_list_t::base&>(el)).begin(),
-            std::get<kdx>(dynamic_cast<typename edge_list_t::base&>(el)).end(), std::get<0>(cs.to_be_indexed_).begin());
-
+      std::get<kdx>(dynamic_cast<typename edge_list_t::base&>(el)).end(), std::get<0>(cs.to_be_indexed_).begin());
+#endif
+  
   // Copy properties
   if constexpr (std::tuple_size<typename edge_list_t::attributes_t>::value > 0) {
     fill_helper(el, cs, std::make_integer_sequence<size_t, std::tuple_size<typename edge_list_t::attributes_t>::value>(), policy);
@@ -268,7 +312,11 @@ void fill_directed(edge_list_t& el, Int N, adjacency_t& cs, ExecutionPolicy&& po
   //	    std::get<kdx>(dynamic_cast<typename edge_list_t::base&>(el)).end(), tmp.begin());
 
   auto a = make_zipped(tmp, cs.to_be_indexed_);
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::sort(hpx::execution::seq, a.begin(), a.end(), [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
+#else
   std::sort(policy, a.begin(), a.end(), [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
+#endif
 
 #endif
 }
@@ -286,22 +334,37 @@ void fill_undirected(edge_list_t& el, Int N, adjacency_t& cs, ExecutionPolicy&& 
   std::vector<vertex_id_type> Tmp(2 * el.size());
   const int                   kdx = (idx + 1) % 2;
 
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::copy(policy, std::get<idx>(el).begin(), std::get<idx>(el).end(), Tmp.begin());
+  hpx::copy(policy, std::get<kdx>(el).begin(), std::get<kdx>(el).end(), Tmp.begin() + el.size());
+#else
   std::copy(policy, std::get<idx>(el).begin(), std::get<idx>(el).end(), Tmp.begin());
   std::copy(policy, std::get<kdx>(el).begin(), std::get<kdx>(el).end(), Tmp.begin() + el.size());
-
+#endif
+  
   {
     std::vector<vertex_id_type> degrees(N);
     cs.indices_.resize(N + 1);
     cs.indices_[0] = 0;
+#ifdef NWGRAPH_HAVE_HPX
+    hpx::for_each(/* policy, */ Tmp.begin(), Tmp.end(), [&](auto&& i) { ++degrees[i]; });
+    hpx::inclusive_scan(policy, degrees.begin(), degrees.end(), cs.indices_.begin() + 1);
+#else
     std::for_each(/* policy, */ Tmp.begin(), Tmp.end(), [&](auto&& i) { ++degrees[i]; });
     std::inclusive_scan(policy, degrees.begin(), degrees.end(), cs.indices_.begin() + 1);
+#endif
   }
 
   cs.to_be_indexed_.resize(Tmp.size());
 
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::copy(policy, std::get<kdx>(el).begin(), std::get<kdx>(el).end(), std::get<0>(cs.to_be_indexed_).begin());
+  hpx::copy(policy, std::get<idx>(el).begin(), std::get<idx>(el).end(), std::get<0>(cs.to_be_indexed_).begin() + el.size());
+#else
   std::copy(policy, std::get<kdx>(el).begin(), std::get<kdx>(el).end(), std::get<0>(cs.to_be_indexed_).begin());
   std::copy(policy, std::get<idx>(el).begin(), std::get<idx>(el).end(), std::get<0>(cs.to_be_indexed_).begin() + el.size());
-
+#endif
+  
   if constexpr (std::tuple_size<typename edge_list_t::attributes_t>::value > 0) {
     copy_helper(el, cs, std::make_integer_sequence<size_t, std::tuple_size<typename edge_list_t::attributes_t>::value>(), 0, policy);
   }
@@ -310,8 +373,12 @@ void fill_undirected(edge_list_t& el, Int N, adjacency_t& cs, ExecutionPolicy&& 
   }
 
   auto a = make_zipped(Tmp, cs.to_be_indexed_);
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::sort(policy, a.begin(), a.end(), [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
+#else
   std::sort(policy, a.begin(), a.end(), [](auto&& a, auto&& b) { return std::get<0>(a) < std::get<0>(b); });
-
+#endif
+  
 #else
 
 
@@ -416,6 +483,22 @@ void swap_to_triangular(edge_list_t& el, const std::string& cessor = "predecesso
 template <int idx, edge_list_graph edge_list_t, succession cessor = succession::predecessor, class ExecutionPolicy = default_execution_policy>
 void swap_to_triangular(edge_list_t& el, ExecutionPolicy&& policy = {}) {
 
+#ifdef NWGRAPH_HAVE_HPX
+    if constexpr ((idx == 0 && cessor == succession::predecessor) || (idx == 1 && cessor == succession::successor)) {
+        hpx::for_each(policy, el.begin(), el.end(), [](auto&& f) {
+            if (std::get<0>(f) < std::get<1>(f)) {
+                std::swap(std::get<0>(f), std::get<1>(f));
+            }
+        });
+    }
+    else if constexpr ((idx == 0 && cessor == succession::successor) || (idx == 1 && cessor == succession::predecessor)) {
+        hpx::for_each(policy, el.begin(), el.end(), [](auto&& f) {
+            if (std::get<1>(f) < std::get<0>(f)) {
+                std::swap(std::get<1>(f), std::get<0>(f));
+            }
+        });
+    }
+#else
   if constexpr ((idx == 0 && cessor == succession::predecessor) || (idx == 1 && cessor == succession::successor)) {
     std::for_each(policy, el.begin(), el.end(), [](auto&& f) {
       if (std::get<0>(f) < std::get<1>(f)) {
@@ -429,6 +512,7 @@ void swap_to_triangular(edge_list_t& el, ExecutionPolicy&& policy = {}) {
       }
     });
   }
+#endif
 }
 
 // Make entries unique -- in place -- remove adjacent redundancies
@@ -436,8 +520,13 @@ void swap_to_triangular(edge_list_t& el, ExecutionPolicy&& policy = {}) {
 template <edge_list_graph edge_list_t, class ExecutionPolicy = default_execution_policy>
 void uniq(edge_list_t& el, ExecutionPolicy&& policy = {}) {
 
+#ifdef NWGRAPH_HAVE_HPX
+    auto past_the_end = hpx::unique(policy, el.begin(), el.end(),
+        [](auto&& x, auto&& y) { return std::get<0>(x) == std::get<0>(y) && std::get<1>(x) == std::get<1>(y); });
+#else
   auto past_the_end = std::unique(policy, el.begin(), el.end(),
                                   [](auto&& x, auto&& y) { return std::get<0>(x) == std::get<0>(y) && std::get<1>(x) == std::get<1>(y); });
+#endif
 
   // el.erase(past_the_end, el.end());
   el.resize(past_the_end - el.begin());
@@ -446,8 +535,13 @@ void uniq(edge_list_t& el, ExecutionPolicy&& policy = {}) {
 template <edge_list_graph edge_list_t>
 void remove_self_loops(edge_list_t& el) {
   auto past_the_end =
+#ifdef NWGRAPH_HAVE_HPX
+      hpx::remove_if(/*std::execution::par_unseq,*/ el.begin(), el.end(), [](auto&& x) { return std::get<0>(x) == std::get<1>(x); });
+  // el.erase(past_the_end, el.end());
+#else
       std::remove_if(/*std::execution::par_unseq,*/ el.begin(), el.end(), [](auto&& x) { return std::get<0>(x) == std::get<1>(x); });
   // el.erase(past_the_end, el.end());
+#endif
   el.resize(past_the_end - el.begin());
 }
 
@@ -488,19 +582,31 @@ requires(is_unipartite<typename edge_list_t::unipartite_graph_base>::value) auto
 
   if constexpr (edge_list_t::edge_directedness == directedness::directed) {
     std::vector<std::atomic<vertex_id_type>> tmp(degree.size());
+#ifdef NWGRAPH_HAVE_HPX
+    hpx::for_each(policy, el.begin(), el.end(), [&](auto&& x) { ++tmp[std::get<d_idx>(x)]; });
 
+    hpx::copy(policy, tmp.begin(), tmp.end(), degree.begin());
+#else
     std::for_each(policy, el.begin(), el.end(), [&](auto&& x) { ++tmp[std::get<d_idx>(x)]; });
 
     std::copy(policy, tmp.begin(), tmp.end(), degree.begin());
+#endif
 
   } else if constexpr (edge_list_t::edge_directedness == directedness::undirected) {
     std::vector<std::atomic<vertex_id_type>> tmp(degree.size());
-
+#ifdef NWGRAPH_HAVE_HPX
+    hpx::for_each(policy, el.begin(), el.end(), [&](auto&& x) {
+        ++tmp[std::get<0>(x)];
+        ++tmp[std::get<1>(x)];
+        });
+    hpx::copy(policy, tmp.begin(), tmp.end(), degree.begin());
+#else
     std::for_each(policy, el.begin(), el.end(), [&](auto&& x) {
       ++tmp[std::get<0>(x)];
       ++tmp[std::get<1>(x)];
     });
     std::copy(policy, tmp.begin(), tmp.end(), degree.begin());
+#endif
   }
   return degree;
 }
@@ -518,9 +624,15 @@ requires(false == is_unipartite<typename edge_list_t::bipartite_graph_base>::val
   if constexpr (edge_list_t::edge_directedness == directedness::directed) {
     std::vector<std::atomic<vertex_id_type>> tmp(degree.size());
 
+#ifdef NWGRAPH_HAVE_HPX
+    hpx::for_each(policy, el.begin(), el.end(), [&](auto&& x) { ++tmp[std::get<d_idx>(x)]; });
+
+    hpx::copy(policy, tmp.begin(), tmp.end(), degree.begin());
+#else
     std::for_each(policy, el.begin(), el.end(), [&](auto&& x) { ++tmp[std::get<d_idx>(x)]; });
 
     std::copy(policy, tmp.begin(), tmp.end(), degree.begin());
+#endif
   }
   return degree;
 }
@@ -541,20 +653,31 @@ auto perm_by_degree(edge_list_t& el, const Vector& degree, std::string direction
       perm[i] = i;
     }
   });
+  auto d = degree.begin();
+
+  if (direction == "descending") {
+      std::sort(policy, perm.begin(), perm.end(), [&](auto a, auto b) { return d[a] > d[b]; });
+  }
+  else if (direction == "ascending") {
+      std::sort(policy, perm.begin(), perm.end(), [&](auto a, auto b) { return d[a] < d[b]; });
+  }
+  else {
+      std::cout << "Unknown direction: " << direction << std::endl;
+  }
 #elif NWGRAPH_HAVE_HPX
   hpx::for_loop(hpx::execution::par, 0ul, perm.size(), [&](auto&& i) {
         perm[i] = i;
   });
-#endif
   auto d = degree.begin();
 
   if (direction == "descending") {
-    std::sort(policy, perm.begin(), perm.end(), [&](auto a, auto b) { return d[a] > d[b]; });
+    hpx::sort(policy, perm.begin(), perm.end(), [&](auto a, auto b) { return d[a] > d[b]; });
   } else if (direction == "ascending") {
-    std::sort(policy, perm.begin(), perm.end(), [&](auto a, auto b) { return d[a] < d[b]; });
+    hpx::sort(policy, perm.begin(), perm.end(), [&](auto a, auto b) { return d[a] < d[b]; });
   } else {
     std::cout << "Unknown direction: " << direction << std::endl;
   }
+#endif
 
   return perm;
 }
@@ -580,15 +703,20 @@ requires(true == is_unipartite<typename edge_list_t::unipartite_graph_base>::val
       iperm[perm[i]] = i;
     }
   });
+  std::for_each(policy, el.begin(), el.end(), [&](auto&& x) {
+      std::get<0>(x) = iperm[std::get<0>(x)];
+      std::get<1>(x) = iperm[std::get<1>(x)];
+    });
 #elif NWGRAPH_HAVE_HPX
   hpx::for_loop(hpx::execution::par, 0ul, iperm.size(), [&](auto&& i) {
           iperm[perm[i]] = i;
   });
+  hpx::for_each(policy, el.begin(), el.end(), [&](auto&& x) {
+      std::get<0>(x) = iperm[std::get<0>(x)];
+      std::get<1>(x) = iperm[std::get<1>(x)];
+    });
 #endif
-  std::for_each(policy, el.begin(), el.end(), [&](auto&& x) {
-    std::get<0>(x) = iperm[std::get<0>(x)];
-    std::get<1>(x) = iperm[std::get<1>(x)];
-  });
+
   return iperm;
 }
 

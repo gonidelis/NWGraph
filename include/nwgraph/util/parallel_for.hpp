@@ -146,7 +146,7 @@ auto parallel_reduce(Range&& range, Op&& op, Reduce&& reduce, T init) {
     return parallel_for_sequential(std::forward<Range>(range), std::forward<Op>(op), std::forward<Reduce>(reduce), init);
   }
 #elif NWGRAPH_HAVE_HPX
-       return hpx::ranges::transform_reduce(hpx::execution::par,
+       return hpx::ranges::transform_reduce(hpx::execution::par_unseq,
         range, init, reduce,
         [&](auto&& elem) {
             // parallel_for_inner(...) expects an iterator, but HPX already dereferences the iterator to give us "elem".

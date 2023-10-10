@@ -29,10 +29,13 @@
 #include <ranges>
 
 #if NWGRAPH_HAVE_TBB
-#include <tbb/concurrent_queue.h>
-#include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for_each.h>
+#else
+#include <hpx/execution.hpp>
+#include <hpx/algorithm.hpp>
 #endif
+#include <tbb/concurrent_vector.h>
+#include <tbb/concurrent_queue.h>
 
 /**
  * @file bfs.hpp
@@ -169,18 +172,18 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
   const std::size_t                                   n = nw::graph::pow2(nw::graph::ceil_log2(num_bins));
   const std::size_t                                   N = num_vertices(out_graph);
   const std::size_t                                   M = out_graph.to_be_indexed_.size();
-#ifdef NWGRAPH_HAVE_TBB
   std::vector<tbb::concurrent_vector<vertex_id_type>> q1(n), q2(n);
-#else
-  std::vector<std::vector<vertex_id_type>> q1(n), q2(n);
-#endif
 
   std::vector<vertex_id_type> parents(N);
   nw::graph::AtomicBitVector  front(N, false);
   nw::graph::AtomicBitVector  curr(N);
 
   constexpr const auto null_vertex = null_vertex_v<vertex_id_type>();
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::fill(hpx::execution::par_unseq, parents.begin(), parents.end(), null_vertex);
+#else
   std::fill(std::execution::par_unseq, parents.begin(), parents.end(), null_vertex);
+#endif
 
   std::uint64_t edges_to_check = M;
   std::uint64_t scout_count    = out_graph[root].size();
@@ -192,25 +195,27 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
   while (!done) {
     if (scout_count > edges_to_check / alpha) {
 #if NWGRAPH_HAVE_HPX
-      std::atomic<std::size_t> awake_count = 0;
-#else
       std::size_t awake_count = 0;
-#endif
+
       // Initialize the frontier bitmap from the frontier queues, and count the
       // number of non-zeros.
-      /*
-      std::size_t awake_count = nw::graph::parallel_for(
-          tbb::blocked_range(0ul, q1.size()),
-          [&](auto&& i) {
-            auto&& q = q1[i];
-            std::for_each(q.begin(), q.end(), [&](auto&& u) { curr.atomic_set(u); });
-            return q.size();
-          }, std::plus{}, 0ul);
-      */
-      std::for_each(std::execution::par_unseq, q1.begin(), q1.end(), [&](auto&& q) {
+
+      hpx::for_each(hpx::execution::par_unseq, q1.begin(), q1.end(), [&](auto&& q) {
         nw::graph::fetch_add(awake_count, q.size());
-        std::for_each(std::execution::par_unseq, q.begin(), q.end(), [&](auto&& u) { curr.atomic_set(u); });
+        hpx::for_each(hpx::execution::par_unseq, q.begin(), q.end(), [&](auto&& u) { curr.atomic_set(u); });
       });
+
+#else
+        std::size_t awake_count = 0;
+
+        // Initialize the frontier bitmap from the frontier queues, and count the
+        // number of non-zeros.
+
+        std::for_each(std::execution::par_unseq, q1.begin(), q1.end(), [&](auto&& q) {
+            nw::graph::fetch_add(awake_count, q.size());
+            std::for_each(std::execution::par_unseq, q.begin(), q.end(), [&](auto&& u) { curr.atomic_set(u); });
+            });
+#endif
 
       std::size_t old_awake_count = 0;
       do {
@@ -220,7 +225,7 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
 
 #if NWGRAPH_HAVE_TBB
         awake_count = tbb::parallel_reduce(
-            tbb::blocked_range(0ul, N), 0ul,
+            tbb::blocked_range<std::size_t>(0ul, N), 0ul,
             [&](auto&& range, auto count) {
               for (auto &&u = range.begin(), e = range.end(); u != e; ++u) {
                 if (null_vertex == parents[u]) {
@@ -239,23 +244,24 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
             },
             std::plus{});
 #elif NWGRAPH_HAVE_HPX
-        // TODO: Giannis says turn that to hpx::transform (no).
-        hpx::ranges::for_each(hpx::execution::par_unseq, std::ranges::iota_view{ 0ul, N }, [&](auto&& u) {
-            std::size_t local_count = 0;
-            if (null_vertex == parents[u]) {
-                // Panos said put a local std::size_t count;
-                for (auto&& elt : in_graph[u]) {
-                    auto v = target(in_graph, elt);
-                    if (front.get(v)) {
-                        curr.atomic_set(u);
-                        parents[u] = v;
-                        ++local_count;
-                        break;
+        awake_count = 0;
+        {    
+            awake_count = hpx::ranges::transform_reduce(hpx::execution::par_unseq, std::ranges::iota_view{0ul, N}, 0ul, std::plus{}, [&](auto&& u) {
+                std::size_t local_count = 0;
+                if (null_vertex == parents[u]) {
+                    for (auto&& elt : in_graph[u]) {
+                        auto v = target(in_graph, elt);
+                        if (front.get(v)) {
+                            curr.atomic_set(u);
+                            parents[u] = v;
+                            ++local_count;
+                            break;
+                        }
                     }
                 }
-                awake_count += local_count;
-            }
-        });
+                return local_count;
+            });
+        }
 #endif
       } while ((awake_count >= old_awake_count) || (awake_count > N / beta));
 
@@ -270,50 +276,22 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
         }
       });
 #elif NWGRAPH_HAVE_HPX
-      hpx::for_each(hpx::execution::par_unseq, curr.non_zeros(nw::graph::pow2(15)), [&](auto&& range) {
-         for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
-              q2[*i % n].push_back(*i);
-         }
+      //TODO make better (>=forward) iterator so that we can run this with a parallel execution policy
+      hpx::for_each(curr.non_zeros(nw::graph::pow2(15)).begin(), curr.non_zeros(nw::graph::pow2(15)).end(), [&](auto&& i) {
+              q2[i % n].push_back(i);
       });
 #endif
 
       scout_count = 1;
     } else {
       edges_to_check -= scout_count;
-      /*
-      scout_count = nw::graph::parallel_for(
-          tbb::blocked_range(0ul, q1.size()),
-          [&](auto&& i) {
-            auto&& q = q1[i];
-            return nw::graph::parallel_for(
-                tbb::blocked_range(0ul, q.size()),
-                [&](auto&& i) {
-                  auto&& u = q[i];
-                  return nw::graph::parallel_for(
-                      out_graph[u],
-                      [&](auto&& v) {
-                        auto curr_val = parents[v];
-                        if (null_vertex == curr_val) {
-                          if (nw::graph::cas(parents[v], curr_val, u)) {
-                            q2[u % n].push_back(v);
-                            return out_graph[v].size();
-                          }
-                        }
-                        return 0ul;
-                      },
-                      std::plus{}, 0ul);
-                },
-                std::plus{}, 0ul);
-          },
-          std::plus{}, 0ul);
-          */
 #if NWGRAPH_HAVE_TBB
       scout_count = nw::graph::parallel_reduce(
-          tbb::blocked_range(0ul, q1.size()),
+          tbb::blocked_range<std::size_t>(0ul, q1.size()),
           [&](auto&& i) {
             auto&& q = q1[i];
             return nw::graph::parallel_reduce(
-                tbb::blocked_range(0ul, q.size()),
+                tbb::blocked_range<std::size_t>(0ul, q.size()),
                 [&](auto&& i) {
                   size_t count = 0;
                   auto&& u     = q[i];
@@ -333,12 +311,12 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
           },
           std::plus{}, 0ul);
 #elif NWGRAPH_HAVE_HPX
-      nw::graph::parallel_reduce(
-          std::ranges::iota_view{ 0ul, q1.size() },
+      scout_count = nw::graph::parallel_reduce(
+          std::ranges::iota_view{ 0ul, q1.size()},
           [&](auto&& i) {
             auto&& q = q1[i];
             return nw::graph::parallel_reduce(
-                std::ranges::iota_view{ 0ul, q1.size() },
+                std::ranges::iota_view{ 0ul, q.size()},
                 [&](auto&& i) {
                   size_t count = 0;
                   auto&& u     = q[i];

@@ -48,8 +48,7 @@
 #include "nwgraph/util/demangle.hpp"
 
 #if NWGRAPH_HAVE_HPX
-#include <hpx/parallel/algorithms/for_loop.hpp>
-// #include <hpx/algorithm.hpp>
+#include <hpx/algorithm.hpp>
 #endif
 
 namespace nw {
@@ -432,7 +431,11 @@ public:    // fixme
     auto s = std::get<0>(to_be_indexed_).begin();
 
     for (size_t i = 0, e = indices_.size() - 1; i < e; ++i) {
-      std::sort(ex_policy, s + indices_[i], s + indices_[i + 1]);
+#ifdef NWGRAPH_HAVE_HPX
+        hpx::sort(ex_policy, s + indices_[i], s + indices_[i + 1]);
+#else
+        std::sort(ex_policy, s + indices_[i], s + indices_[i + 1]);
+#endif
     }
 
     if (g_debug_compressed) {

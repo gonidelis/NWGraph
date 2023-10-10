@@ -109,7 +109,11 @@ static bool worth_relabeling(const EdgeList& el, const Vector& degree) {
     samples[trial] = degree[udist(rng)];
     sample_total += samples[trial];
   }
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::sort(hpx::execution::par_unseq, samples.begin(), samples.end());
+#else
   std::sort(std::execution::par_unseq, samples.begin(), samples.end());
+#endif
   double sample_average = static_cast<double>(sample_total) / num_samples;
   double sample_median  = samples[num_samples / 2];
   return sample_average / 1.3 > sample_median;

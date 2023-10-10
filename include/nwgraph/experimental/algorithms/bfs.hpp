@@ -30,7 +30,10 @@
 #include <tbb/concurrent_queue.h>
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for_each.h>
-
+#elif NWGRAPH_HAVE_HPX
+#include <tbb/concurrent_vector.h>
+#include <hpx/algorithm.hpp>
+#endif
 
 namespace nw {
 namespace graph {
@@ -49,6 +52,18 @@ auto bfs_v4(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
 
   while (!q1.empty()) {
 
+#ifdef NWGRAPH_HAVE_HPX
+    hpx::for_each(hpx::execution::par_unseq, q1.unsafe_begin(), q1.unsafe_end(), [&](vertex_id_type u) {
+       hpx::for_each(graph[u].begin(), graph[u].end(), [&](auto&& x) {
+            vertex_id_type v = target(graph, x);
+            if (level[v] == std::numeric_limits<vertex_id_type>::max()) {
+                q2.push(v);
+                level[v] = lvl;
+                parents[v] = u;
+            }
+            });
+        });
+#else
     std::for_each(std::execution::par_unseq, q1.unsafe_begin(), q1.unsafe_end(), [&](vertex_id_type u) {
       std::for_each(graph[u].begin(), graph[u].end(), [&](auto&& x) {
         vertex_id_type v = target(graph, x);
@@ -59,6 +74,7 @@ auto bfs_v4(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
         }
       });
     });
+#endif
     q1(q2);
     //q1.internal_swap(q2);
     q2.clear();
@@ -67,6 +83,7 @@ auto bfs_v4(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
   }
   return parents;
 }
+
 
 template <adjacency_list_graph Graph>
 auto bfs_v6(const Graph& graph, typename graph_traits<Graph>::vertex_id_type root) {
@@ -82,6 +99,18 @@ auto bfs_v6(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
   parents[root] = root;
 
   while (!q1.empty()) {
+#if NWGRAPH_HAVE_HPX
+    hpx::for_each(q1.begin(), q1.end(), [&](vertex_id_type u) {
+        hpx::for_each(graph[u].begin(), graph[u].end(), [&](auto&& x) {
+            vertex_id_type v = target(graph, x);
+            if (level[v] == std::numeric_limits<vertex_id_type>::max()) {
+                q2.push_back(v);
+                level[v] = lvl;
+                parents[v] = u;
+            }
+            });
+        });
+#else
     std::for_each(q1.begin(), q1.end(), [&](vertex_id_type u) {
       std::for_each(graph[u].begin(), graph[u].end(), [&](auto&& x) {
         vertex_id_type v = target(graph, x);
@@ -92,12 +121,15 @@ auto bfs_v6(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
         }
       });
     });
+#endif
     std::swap(q1, q2);
     q2.clear();
     ++lvl;
   }
   return parents;
 }
+
+
 
 template <adjacency_list_graph Graph>
 auto bfs_v7(const Graph& graph, typename graph_traits<Graph>::vertex_id_type root) {
@@ -116,6 +148,28 @@ auto bfs_v7(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
   parents[root] = root;
 
   while (!q1.empty()) {
+#ifdef NWGRAPH_HAVE_HPX
+    hpx::for_each(hpx::execution::par_unseq, q1.begin(), q1.end(), [&](vertex_id_type u) {
+        hpx::for_each(graph[u].begin(), graph[u].end(), [&](auto&& x) {
+            vertex_id_type v = target(graph, x);
+            vertex_id_type old_lvl = level[v];
+            vertex_id_type new_lvl = lvl;
+            if (new_lvl < old_lvl) {
+                bool changed = true;
+                while (!level[v].compare_exchange_strong(old_lvl, new_lvl)) {
+                    if (old_lvl <= new_lvl) {
+                        changed = false;
+                        break;
+                    }
+                }
+                if (changed) {
+                    q2.push_back(v);
+                    parents[v] = u;
+                }
+            }
+        });
+      });
+#else
     std::for_each(std::execution::par_unseq, q1.begin(), q1.end(), [&](vertex_id_type u) {
       std::for_each(graph[u].begin(), graph[u].end(), [&](auto&& x) {
         vertex_id_type v = target(graph, x);
@@ -136,6 +190,7 @@ auto bfs_v7(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
         }
       });
     });
+#endif
     std::swap(q1, q2);
     q2.clear();
 
@@ -143,6 +198,8 @@ auto bfs_v7(const Graph& graph, typename graph_traits<Graph>::vertex_id_type roo
   }
   return parents;
 }
+
+#if 0
 
 template <adjacency_list_graph Graph>
 auto bfs_v8(const Graph& graph, typename graph_traits<Graph>::vertex_id_type root) {
@@ -372,6 +429,7 @@ template <adjacency_list_graph Graph, adjacency_list_graph Transpose>
   }
   return parents;
 }
+#endif
 
 
 template<adjacency_list_graph Graph>
@@ -379,69 +437,138 @@ size_t BU_step(const Graph& g, std::vector<vertex_id_t<Graph>>& parents,
 nw::graph::AtomicBitVector<>& front, nw::graph::AtomicBitVector<>& next) {
   size_t N = num_vertices(g);    // number of nodes
   next.clear();
+#ifdef NWGRAPH_HAVE_HPX
+    std::atomic<std::size_t> count = 0;
+    auto temp = nw::graph::neighbor_range(g);
+    hpx::for_each(temp.begin(), temp.end(),
+        [&](auto&& v) {
+            size_t n = 0;
+            auto&& u = std::get<0>(v);
+            auto&& neighbors = std::get<1>(v);
+            if (null_vertex_v<vertex_id_t<Graph>>() == parents[u]) {
+                // if u has not found a parent (not visited)
+                for (auto&& elt : neighbors) {
+                    auto v = target(g, elt);
+                    if (front.get(v)) {
+                        //if v is not visited
+                        next.atomic_set(u);
+                        parents[u] = v;
+                        ++n;
+                        break;
+                    }
+                }
+            }
+            count += n;
+        });
+    return count;
+#elif NWGRAPH_HAVE_TBB
   return tbb::parallel_reduce(
       nw::graph::neighbor_range(g), 0ul,
-      [&](auto &&range, auto n) {
-        for (auto&& [u, neighbors] : range) {
-          if (null_vertex_v<vertex_id_t<Graph>>() == parents[u]) {
-            //if u has not found a parent (not visited)
-            for (auto&& elt : neighbors) {
-              auto v = target(g, elt);
-              if (front.get(v)) {
-                //if v is not visited
-                next.atomic_set(u);
-                parents[u] = v;
-                ++n;
-                break;
+      [&](auto&& range, auto n) {
+          for (auto&& b = range.begin(); b < range.end(); ++b) {
+              auto u = std::get<0>(*b);
+              auto neighbors = std::get<1>(*b);
+              if (null_vertex_v<vertex_id_t<Graph>>() == parents[u]) {
+                  //if u has not found a parent (not visited)
+                  for (auto&& elt : neighbors) {
+                      auto v = target(g, elt);
+                      if (front.get(v)) {
+                          //if v is not visited
+                          next.atomic_set(u);
+                          parents[u] = v;
+                          ++n;
+                          break;
+                      }
+                  }
               }
-            }
           }
-        }
-        return n;
+          return n;
       }, std::plus{});
+#endif
+
 }
 
 template<adjacency_list_graph Graph, typename Vector>
 size_t TD_step(const Graph& g, std::vector<vertex_id_t<Graph>>& parents,
-Vector& cur, std::vector<Vector>& next) {
-  size_t scout_count = 0;
-  size_t N = cur.size();
-  scout_count = tbb::parallel_reduce(
-    tbb::blocked_range(0ul, N), 0ul,
-    [&](auto&& range, auto n) {
-      int worker_index = tbb::this_task_arena::current_thread_index();
-      for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
-        auto u = cur[i];
-        for (auto&& elt : g[u]) {
-          auto v = target(g, elt);
-          auto curr_val = parents[v];
-          if (null_vertex_v<vertex_id_t<Graph>>() == curr_val) {
-            //if u has not found a parent (not visited)
-            if (nw::graph::cas(parents[v], curr_val, u)) {
-              next[worker_index].push_back(v);
-              n += g[v].size();
+    Vector& cur, std::vector<Vector>& next) {
+    std::atomic<size_t> scout_count = 0;
+    size_t N = cur.size();
+
+#ifdef NWGRAPH_HAVE_HPX
+
+	hpx::ranges::for_each(
+		std::ranges::iota_view{ 0ul, N },
+		[&](auto&& i) {
+            std::size_t n = 0;
+			int worker_index = hpx::get_worker_thread_num();
+			auto u = cur[i];
+            for (auto&& elt : g[u]) {
+                auto v = target(g, elt);
+                auto curr_val = parents[v];
+                if (null_vertex_v<vertex_id_t<Graph>>() == curr_val) {
+                    //if u has not found a parent (not visited)
+                    if (nw::graph::cas(parents[v], curr_val, u)) {
+                        next[worker_index].push_back(v);
+                        n += g[v].size();
+                    }
+                }
             }
+            scout_count += n;
+		});
+#elif NWGRAPH_HAVE_TBB
+  scout_count = tbb::parallel_reduce(
+      tbb::blocked_range<std::size_t>(0ul, N), 0ul,
+      [&](auto&& range, auto n) {
+          int worker_index = tbb::this_task_arena::current_thread_index();
+          for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
+              auto u = cur[i];
+              for (auto&& elt : g[u]) {
+                  auto v = target(g, elt);
+                  auto curr_val = parents[v];
+                  if (null_vertex_v<vertex_id_t<Graph>>() == curr_val) {
+                      //if u has not found a parent (not visited)
+                      if (nw::graph::cas(parents[v], curr_val, u)) {
+                          next[worker_index].push_back(v);
+                          n += g[v].size();
+                      }
+                  }
+              }
           }
-        }
-      }
-      return n;
-  }, std::plus{});
+          return n;
+      }, std::plus{});
+#endif
   return scout_count;
 }
+
 template<class T>
 inline void queue_to_bitmap(std::vector<T>& queue, nw::graph::AtomicBitVector<>& bitmap) {
+#ifdef NWGRAPH_HAVE_HPX
+    hpx::for_each(hpx::execution::par_unseq, queue.begin(), queue.end(), [&](auto&& u) {
+        bitmap.atomic_set(u);
+    });
+#elif  NWGRAPH_HAVE_TBB
   std::for_each(std::execution::par_unseq, queue.begin(), queue.end(), [&](auto&& u) { 
     bitmap.atomic_set(u); 
   });
+#endif
 }
 template<typename Vector>
 inline void bitmap_to_queue(nw::graph::AtomicBitVector<>& bitmap, std::vector<Vector>& lqueue) {
-  tbb::parallel_for(bitmap.non_zeros(nw::graph::pow2(15)), [&](auto&& range) {
-    int worker_index = tbb::this_task_arena::current_thread_index();
-    for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
-      lqueue[worker_index].push_back(*i);
-    }
-  });
+#ifdef NWGRAPH_HAVE_HPX
+    auto gamiesai = bitmap.non_zeros(nw::graph::pow2(15));
+    // TODO: make it run in parallel
+    hpx::ranges::for_each(gamiesai.begin(), gamiesai.end(), [&](auto&& i) {
+        int worker_index = hpx::get_local_worker_thread_num();
+        lqueue[worker_index].push_back(i);
+    });
+#elif NWGRAPH_HAVE_TBB
+    tbb::parallel_for(bitmap.non_zeros(nw::graph::pow2(15)), [&](auto&& range) {
+        int worker_index = tbb::this_task_arena::current_thread_index();
+        for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
+            lqueue[worker_index].push_back(*i);
+        }
+    });
+#endif
 }
 
 /*
@@ -460,12 +587,21 @@ void flush(std::vector<Vector>& lqueue, Vector& queue) {
   }
   //resize 'queue'
   queue.resize(size); 
-  std::for_each(std::execution::par_unseq, counting_iterator(0ul), counting_iterator(n), [&](auto i) {
+#ifdef NWGRAPH_HAVE_TBB
+  std::for_each(std::execution::par_unseq, counting_iterator<std::size_t>(0ul), counting_iterator<std::size_t>(n), [&](auto i) {
     //copy each thread-local queue to global queue based on their size offset
     auto begin = std::next(queue.begin(), size_array[i]);
     std::copy(std::execution::par_unseq, lqueue[i].begin(), lqueue[i].end(), begin);
     lqueue[i].clear();
   });
+#elif NWGRAPH_HAVE_HPX
+  hpx::ranges::for_each(hpx::execution::par_unseq, std::ranges::iota_view(0ul, n), [&](auto i) {
+      //copy each thread-local queue to global queue based on their size offset
+      auto begin = std::next(queue.begin(), size_array[i]);
+      hpx::copy(hpx::execution::par_unseq, lqueue[i].begin(), lqueue[i].end(), begin);
+      lqueue[i].clear();
+  });
+#endif
 }
 
 template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
@@ -483,7 +619,12 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
   std::vector<vertex_id_type> parents(N);
 
   constexpr const auto null_vertex = null_vertex_v<vertex_id_type>();
+#ifdef NWGRAPH_HAVE_HPX
+  hpx::fill(std::execution::par_unseq, parents.begin(), parents.end(), null_vertex);
+#elif NWGRAPH_HAVE_TBB
   std::fill(std::execution::par_unseq, parents.begin(), parents.end(), null_vertex);
+#endif
+
 
   std::uint64_t edges_to_check = M;
   std::uint64_t scout_count    = out_graph[root].size();
@@ -497,7 +638,11 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
 
   while (!queue.empty()) {
     if (scout_count > edges_to_check / alpha) {
-      std::size_t                awake_count = queue.size();
+#if NWGRAPH_HAVE_HPX
+        std::atomic<std::size_t> awake_count = queue.size();
+#else
+        std::size_t awake_count = queue.size();
+#endif
       // Initialize the frontier bitmap from the frontier queues, and count the
       // number of non-zeros.
       queue_to_bitmap<vertex_id_type>(queue, curr);
@@ -508,8 +653,27 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
         std::swap(front, curr);
         curr.clear();
 
+#ifdef NWGRAPH_HAVE_HPX
+        awake_count = 0;
+    hpx::ranges::for_each(hpx::execution::par_unseq, std::ranges::iota_view{ 0ul, N }, [&](auto&& u) {
+        std::size_t local_count = 0;
+        if (null_vertex == parents[u]) {
+            // Panos said put a local std::size_t count;
+            for (auto&& elt : in_graph[u]) {
+                auto v = target(in_graph, elt);
+                if (front.get(v)) {
+                    curr.atomic_set(u);
+                    parents[u] = v;
+                    ++local_count;
+                    break;
+                }
+            }
+            awake_count += local_count;
+        }
+        });
+#elif NWGRAPH_HAVE_TBB
         awake_count = tbb::parallel_reduce(
-            tbb::blocked_range(0ul, N), 0ul,
+            tbb::blocked_range<std::size_t>(0ul, N), 0ul,
             [&](auto&& range, auto n) {
               for (auto&& u = range.begin(), e = range.end(); u != e; ++u) {
                 if (null_vertex == parents[u]) {
@@ -526,36 +690,59 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
               }
               return n;
             }, std::plus{});
+#endif
       } while ((awake_count >= old_awake_count) || (awake_count > N / beta));
 
       if (awake_count == 0) {
         return parents;
       }
 
+      //! we need to find out when this is called
       bitmap_to_queue(curr, lqueue);
       flush(lqueue, queue);
 
       scout_count = 1;
     } else {
       edges_to_check -= scout_count;
-      scout_count = tbb::parallel_reduce(tbb::blocked_range(0ul, queue.size()), 0ul,
-                                         [&](auto&&range, auto count) {
-            int worker_index = tbb::this_task_arena::current_thread_index();
-            for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
-              auto u = queue[i];
-              for (auto&& elt : out_graph[u]) {
-                auto v = target(out_graph, elt);
-                auto curr_val = parents[v];
-                if (null_vertex == curr_val) {
-                  if (nw::graph::cas(parents[v], curr_val, u)) {
-                    lqueue[worker_index].push_back(v);
-                    count += out_graph[v].size();
-                  }
-                }
-              }
-            }
-            return count;
-      }, std::plus{});
+#ifdef NWGRAPH_HAVE_HPX
+	std::atomic<std::size_t> count = 0;
+	hpx::ranges::for_each(hpx::execution::par_unseq, std::ranges::iota_view(0ul, queue.size()),
+		[&](auto&& i) {
+            std::size_t local_count = 0;
+			int worker_index = hpx::get_local_worker_thread_num();
+			auto u = queue[i];
+			for (auto&& elt : out_graph[u]) {
+				auto v = target(out_graph, elt);
+				auto curr_val = parents[v];
+				if (null_vertex == curr_val) {
+					if (nw::graph::cas(parents[v], curr_val, u)) {
+						lqueue[worker_index].push_back(v);
+						local_count += out_graph[v].size();
+					}
+				}
+			}
+            count += local_count;
+		});
+#elif NWGRAPH_HAVE_TBB
+	scout_count = tbb::parallel_reduce(tbb::blocked_range<std::size_t>(0ul, queue.size()), 0ul,
+		[&](auto&& range, auto count) {
+			int worker_index = tbb::this_task_arena::current_thread_index();
+			for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
+				auto u = queue[i];
+				for (auto&& elt : out_graph[u]) {
+					auto v = target(out_graph, elt);
+					auto curr_val = parents[v];
+					if (null_vertex == curr_val) {
+						if (nw::graph::cas(parents[v], curr_val, u)) {
+							lqueue[worker_index].push_back(v);
+							count += out_graph[v].size();
+						}
+					}
+				}
+			}
+			return count;
+}, std::plus{});
+#endif
       flush(lqueue, queue);
     }
   }
@@ -573,7 +760,11 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
   size_t N = num_vertices(out_graph);
   Vector parents(N);
   constexpr const auto null_vertex = null_vertex_v<vertex_id_type>();
+#if NWGRAPH_HAVE_HPX
+  hpx::fill(hpx::execution::par_unseq, parents.begin(), parents.end(), null_vertex);
+#else
   std::fill(std::execution::par_unseq, parents.begin(), parents.end(), null_vertex);
+#endif
   parents[root] = root;
   Vector frontier;
   std::vector<Vector> nextfrontier(n);
@@ -610,5 +801,4 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
 }    // namespace graph
 }    // namespace nw
 
-#endif ////////////////////////////////////////////////////////////////// REMOVE THIS!!!!!
 #endif    // NW_GRAPH_EXPERIMENTAL_BFS_HPP
