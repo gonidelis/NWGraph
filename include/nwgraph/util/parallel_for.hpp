@@ -84,7 +84,8 @@ void parallel_for_sequential(Range&& range, Op&& op) {
 ///                     `range`.
 template <class Range, class Op, class Reduce, class T>
 auto parallel_for_sequential(Range&& range, Op&& op, Reduce&& reduce, T init) {
-  for (auto &&i = range.begin(), e = range.end(); i != e; ++i) {
+  auto e = range.end();
+  for (auto &&i = range.begin(); i != e; ++i) {
     init = reduce(init, parallel_for_inner(op, i));
   }
   return init;
@@ -146,6 +147,8 @@ auto parallel_reduce(Range&& range, Op&& op, Reduce&& reduce, T init) {
     return parallel_for_sequential(std::forward<Range>(range), std::forward<Op>(op), std::forward<Reduce>(reduce), init);
   }
 #elif NWGRAPH_HAVE_HPX
+    if (range.size() > 128)
+    {
        return hpx::ranges::transform_reduce(hpx::execution::par_unseq,
         range, init, reduce,
         [&](auto&& elem) {
@@ -153,7 +156,23 @@ auto parallel_reduce(Range&& range, Op&& op, Reduce&& reduce, T init) {
             // We work around that by taking the address of "elem", which can be dereferenced, so in that sense it will
             // function in an equivalent way to passing an iterator.
             return parallel_for_inner(op, &elem);
+           //return hpx::experimental::for_loop(range, )
         });
+
+       /*T reduce_result{};
+        hpx::ranges::experimental::for_loop(hpx::execution::seq,
+            range,
+            hpx::experimental::reduction(reduce_result, init, reduce), 
+            [&](auto&& elem, auto&& reduce_result) {
+                return parallel_for_inner(op, &elem);
+           });
+        return reduce_result;*/
+    }
+    else
+    {
+        return  parallel_for_sequential(std::forward<Range>(range), std::forward<Op>(op), std::forward<Reduce>(reduce), init);
+    }
+
 #endif
 }
 }    // namespace graph

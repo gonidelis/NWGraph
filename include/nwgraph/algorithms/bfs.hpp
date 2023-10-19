@@ -202,7 +202,7 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
 
       hpx::for_each(hpx::execution::par_unseq, q1.begin(), q1.end(), [&](auto&& q) {
         nw::graph::fetch_add(awake_count, q.size());
-        hpx::for_each(hpx::execution::par_unseq, q.begin(), q.end(), [&](auto&& u) { curr.atomic_set(u); });
+        hpx::for_each(hpx::execution::seq, q.begin(), q.end(), [&](auto&& u) { curr.atomic_set(u); });
       });
 
 #else
@@ -227,7 +227,7 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
         awake_count = tbb::parallel_reduce(
             tbb::blocked_range<std::size_t>(0ul, N), 0ul,
             [&](auto&& range, auto count) {
-              for (auto &&u = range.begin(), e = range.end(); u != e; ++u) {
+            for (auto&& u = range.begin(), e = range.end(); u != e; ++u) {
                 if (null_vertex == parents[u]) {
                   for (auto&& elt : in_graph[u]) {
                     auto v = target(in_graph, elt);
@@ -244,24 +244,24 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
             },
             std::plus{});
 #elif NWGRAPH_HAVE_HPX
-        awake_count = 0;
-        {    
-            awake_count = hpx::ranges::transform_reduce(hpx::execution::par_unseq, std::ranges::iota_view{0ul, N}, 0ul, std::plus{}, [&](auto&& u) {
-                std::size_t local_count = 0;
+        std::size_t count = 0;
+        hpx::experimental::for_loop(hpx::execution::par_unseq, 0ul, N,
+            hpx::experimental::reduction_plus(count),
+            [&](auto&& u, auto&& count) {
                 if (null_vertex == parents[u]) {
                     for (auto&& elt : in_graph[u]) {
                         auto v = target(in_graph, elt);
                         if (front.get(v)) {
                             curr.atomic_set(u);
                             parents[u] = v;
-                            ++local_count;
+                            ++count;
                             break;
                         }
                     }
                 }
-                return local_count;
+                return count;
             });
-        }
+        awake_count = count;
 #endif
       } while ((awake_count >= old_awake_count) || (awake_count > N / beta));
 
@@ -271,7 +271,7 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
 
 #if NWGRAPH_HAVE_TBB
       tbb::parallel_for(curr.non_zeros(nw::graph::pow2(15)), [&](auto&& range) {
-        for (auto &&i = range.begin(), e = range.end(); i != e; ++i) {
+        for (auto&& i = range.begin(), e = range.end(); i != e; ++i) {
           q2[*i % n].push_back(*i);
         }
       });
@@ -332,9 +332,9 @@ template <adjacency_list_graph OutGraph, adjacency_list_graph InGraph>
                   }
                   return count;
                 },
-                std::plus{}, 0ul);
+                std::plus<int>{}, 0);
           },
-          std::plus{}, 0ul);
+          std::plus<int>{}, 0);
 #endif
     }
 
